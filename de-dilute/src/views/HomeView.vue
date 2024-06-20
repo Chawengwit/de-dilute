@@ -1,6 +1,6 @@
 <template>
   <div id="homeView">
-    <h1>content</h1>
+    <h1> Content รอ รูป !!! </h1>
   </div>
 </template>
 

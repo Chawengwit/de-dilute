@@ -1,5 +1,6 @@
 <template>
   <div id="headerZone">
+    <HamMenu/>
     <div class="header">
       <div class="inner">
         <router-link class="logo-brand" to="/">
@@ -11,8 +12,12 @@
 </template>
 
 <script>
+import HamMenu from './HamMenu.vue';
 export default {
-    name: "HeaderZone"
+    name: "HeaderZone",
+    components: {
+      HamMenu
+    }
 }
 </script>
   
@@ -20,7 +25,7 @@ export default {
   .header {
     width: 100%;
     height: 30vh;
-    background-color: var(--light-green);
+    background: linear-gradient(to right top, var(--green)25%, var(--light-green) 50%,  var(--green-yellow) 75% );
     padding-left: 40px;
 
     display: flex;

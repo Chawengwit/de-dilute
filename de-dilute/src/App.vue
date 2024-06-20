@@ -10,6 +10,7 @@
 import HeaderZone from './components/HeaderZone.vue';
 import ContentZone from './components/ContentZone.vue';
 import FooterZone from './components/FooterZone.vue';
+
 export default {
   name: "AppVue",
   components: {
