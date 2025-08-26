@@ -1,0 +1,27 @@
+# Node modules & logs
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+*.log
+
+# Git & VCS
+.git
+.gitignore
+
+# Environment files (ใช้ docker-compose แทน)
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist
+build
+coverage
+
+# Frontend sources we don’t need in image
+frontend/scss
+frontend/**/*.map
