@@ -1,0 +1,100 @@
+// SPA Router + Page Loader (Class-based)
+
+export default class App {
+  constructor() {
+    this.mainContent = document.getElementById("main-content");
+    this.navContainer = document.getElementById("nav-container");
+
+    // Map URL path → page module (in /pages)
+    this.routes = {
+      "/": "home",
+      "/home": "home",
+      "/login": "login",
+      "/register": "register",
+      "/admin": "admin",
+      "/404": "404",
+    };
+  }
+
+  init() {
+    this.loadNavigation().then(() => {
+      this.setupNavigation();
+      this.loadPage(window.location.pathname);
+    });
+
+    // Handle browser back/forward
+    window.addEventListener("popstate", () => {
+      this.loadPage(window.location.pathname);
+    });
+  }
+
+  async loadNavigation() {
+    try {
+      const res = await fetch("nav.html");
+      if (!res.ok) throw new Error("Failed to load navigation");
+
+      this.navContainer.innerHTML = await res.text();
+    } catch (err) {
+      console.error("❌ Navigation load error:", err);
+
+      this.navContainer.innerHTML = `
+        <nav>
+            <ul>
+                <li><a href="/" data-link>Home</a></li>
+                <li><a href="/login" data-link>Login</a></li>
+                <li><a href="/admin" data-link>Admin</a></li>
+            </ul>
+        </nav>`;
+    }
+  }
+
+  setupNavigation() {
+    this.navContainer.addEventListener("click", (e) => {
+      const link = e.target.closest("a[data-link]");
+      if (link) {
+        e.preventDefault();
+        this.navigateTo(link.getAttribute("href"));
+      }
+    });
+  }
+
+  normalizePath(path) {
+    return this.routes[path] ? path : "/404";
+  }
+
+  navigateTo(path) {
+    window.history.pushState({}, "", path);
+    this.loadPage(path);
+  }
+
+  async loadPage(path) {
+    const normalized = this.normalizePath(path);
+    const pageName = this.routes[normalized];
+    await this.loadPageModule(pageName);
+  }
+
+  async loadPageModule(pageName) {
+    try {
+      const module = await import(`./pages/${pageName}.js`);
+      this.initPageModule(module, pageName);
+    } catch (err) {
+      console.error(`❌ Error loading page module "${pageName}":`, err);
+      // Fallback to 404
+      if (pageName !== "404") {
+        this.loadPageModule("404");
+      } else {
+        this.mainContent.innerHTML = "<h1>404 - Page Not Found</h1>";
+      }
+    }
+  }
+
+  initPageModule(module, pageName) {
+    if (module && typeof module.init === "function") {
+      this.mainContent.innerHTML = ""; // clear old content
+      module.init(this.mainContent);
+    } else {
+      console.error(`⚠️ Module "${pageName}" missing init() function.`);
+      this.mainContent.innerHTML = "<h1>Error loading page</h1>";
+    }
+  }
+}
