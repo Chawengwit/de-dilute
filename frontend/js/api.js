@@ -1,12 +1,10 @@
-import axios from "https://cdn.jsdelivr.net/npm/axios@1.7.2/dist/axios.min.js";
+import axios from "https://unpkg.com/axios@1.6.7/dist/esm/axios.js";
 
 // Axios instance with default config
 const api = axios.create({
   baseURL: "/api", // Nginx will proxy this to backend:3000
   headers: { "Content-Type": "application/json" },
 });
-
-// ================== Example APIs ================== //
 
 // Mock product data (for development fallback)
 const mockProducts = [
