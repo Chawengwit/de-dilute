@@ -20,7 +20,6 @@ app.listen(PORT, () => {
 
 // TODO NEXT CREATE A PROPER STARTUP SEQUENCE
 // Start server after ensuring DB connection
-
 // async function startServer() {
 //     try {
 //         // Test database connection
