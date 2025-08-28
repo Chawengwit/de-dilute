@@ -2,8 +2,8 @@ import axios from "https://unpkg.com/axios@1.6.7/dist/esm/axios.js";
 
 // Axios instance with default config
 const api = axios.create({
-  // baseURL: "/api", // Nginx will proxy this to backend:3000
-  baseURL: "http://localhost:3000/api", // TODO if finish then remove
+  baseURL: "/api", // Nginx will proxy this to backend:3000
+  // baseURL: "http://localhost:3000/api", // >> ใช้ตอนเปิด npx serve .
   headers: { "Content-Type": "application/json" },
   timeout: 5000,
 });
