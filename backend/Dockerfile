@@ -19,6 +19,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Copy node_modules & source
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
