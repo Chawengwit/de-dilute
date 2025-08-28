@@ -16,23 +16,7 @@ dotenv.config();
 const app = express();
 
 // ---------------- Middleware ---------------- //
-
-// Parse JSON & form data
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Security & performance
-app.use(helmet());        // secure HTTP headers
-app.use(compression());   // gzip/deflate responses
-
-// Logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));       // concise logs in dev
-} else {
-  app.use(morgan('combined'));  // Apache-style logs in prod
-}
-
-// ---------------- CORS ---------------- //
+// CORS
 const corsOptions =
   process.env.NODE_ENV === 'production'
     ? {
@@ -49,6 +33,21 @@ const corsOptions =
       };
 
 app.use(cors(corsOptions));
+
+// Parse JSON & form data
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Security & performance
+app.use(helmet());        // secure HTTP headers
+app.use(compression());   // gzip/deflate responses
+
+// Logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));       // concise logs in dev
+} else {
+  app.use(morgan('combined'));  // Apache-style logs in prod
+}
 
 // ---------------- Routes ---------------- //
 
