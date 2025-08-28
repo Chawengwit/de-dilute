@@ -1,6 +1,7 @@
 import pkg from "pg";
 import dotenv from "dotenv";
 
+// โหลดไฟล์ env (เลือกตาม NODE_ENV)
 dotenv.config();
 
 const { Pool } = pkg;
@@ -9,9 +10,9 @@ const { Pool } = pkg;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  max: 10, // maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // close idle clients after 30s
-  connectionTimeoutMillis: 5000 // return an error after 5s if connection could not be established
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000
 });
 
 // Event listeners for pool
@@ -21,10 +22,10 @@ pool.on("connect", () => {
 
 pool.on("error", (err) => {
   console.error("Unexpected DB error", err);
-  process.exit(-1); // Exit process on DB error
+  process.exit(-1);
 });
 
-// Export query function for executing SQL queries
+// Export query function
 export const query = (text, params) => pool.query(text, params);
 
 export default pool;
