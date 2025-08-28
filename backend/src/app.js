@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import pool from './db.js';
 
 // Import API routes
 import authRoutes from './routes/auth.js';
@@ -57,13 +58,26 @@ app.use('/api/products', productRoutes);
 app.use('/api/media', mediaRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    env: process.env.NODE_ENV,
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).json({
+      status: 'OK',
+      env: process.env.NODE_ENV,
+      uptime: process.uptime(),
+      db: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'ERROR',
+      env: process.env.NODE_ENV,
+      uptime: process.uptime(),
+      db: 'disconnected',
+      error: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // ---------------- Error Handling ---------------- //
