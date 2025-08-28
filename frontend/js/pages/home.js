@@ -9,7 +9,7 @@ export async function init(container) {
     const productList = document.getElementById("product-list");
 
     try {
-        const products = await getProducts(true);
+        const products = await getProducts();
 
         if (!products || products.length === 0) {
             productList.innerHTML = "<p>No products available.</p>";
