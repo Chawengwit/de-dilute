@@ -11,28 +11,21 @@ dotenv.config({ path: envPath });
 
 const PORT = process.env.BACKEND_PORT || 3000;
 
-// TODO FOR TESTING PURPOSES ONLY
-// Start server without waiting for DB connection
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV} mode.`);
-});
-
-// TODO NEXT CREATE A PROPER STARTUP SEQUENCE
 // Start server after ensuring DB connection
-// async function startServer() {
-//   try {
-//     await pool.query("SELECT NOW()");
-//     console.log("✅ Database connected successfully");
+async function startServer() {
+  try {
+    await pool.query("SELECT NOW()");
+    console.log("✅ Database connected successfully");
 
-//     app.listen(PORT, () => {
-//       console.log(
-//         `🚀 Server is running on port ${PORT} in ${process.env.NODE_ENV} mode.`
-//       );
-//     });
-//   } catch (err) {
-//     console.error("❌ Failed to connect to the database:", err);
-//     process.exit(1);
-//   }
-// }
+    app.listen(PORT, () => {
+      console.log(
+        `🚀 Server is running on port ${PORT} in ${process.env.NODE_ENV} mode.`
+      );
+    });
+  } catch (err) {
+    console.error("❌ Failed to connect to the database:", err);
+    process.exit(1);
+  }
+}
 
-// startServer();
+startServer();
