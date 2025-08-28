@@ -4,7 +4,7 @@ services:
     container_name: dedilute_db
     restart: always
     env_file:
-      - .env.${ENVIRONMENT}
+      - .env.development
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -22,7 +22,7 @@ services:
     container_name: dedilute_backend
     restart: always
     env_file:
-      - .env.${ENVIRONMENT}
+      - .env.development
     ports:
       - "${BACKEND_PORT}:3000"
     depends_on:
