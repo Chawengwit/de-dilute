@@ -6,7 +6,7 @@ import {
   updateProductSchema,
   paginationSchema,
   idSchema,
-} from "../schemas/schemas.js";
+} from "../middleware/schemas.js";
 
 const router = Router();
 
