@@ -1,5 +1,130 @@
-h1 {
-  color: blue;
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f4f6f8;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-box {
+  margin-top: 40px;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 320px;
+  text-align: center;
+}
+.login-box h2 {
+  margin-bottom: 1.5rem;
+  color: #4cafef;
+}
+
+.input-group {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+.input-group label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  color: #333;
+}
+.input-group input {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.input-group input:focus {
+  outline: none;
+  border-color: #4cafef;
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+.btn.btn-primary {
+  background: #4cafef;
+  color: #fff;
+}
+.btn.btn-primary:hover {
+  background: rgb(29.1846153846, 154.0769230769, 234.8153846154);
+}
+.btn.btn-secondary {
+  background: #6c757d;
+  color: #fff;
+}
+.btn.btn-secondary:hover {
+  background: rgb(84.3605150215, 91.3905579399, 97.6394849785);
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.5);
+}
+.modal .modal-content {
+  background: #fff;
+  margin: 10% auto;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+  animation: fadeIn 0.3s ease;
+}
+.modal .modal-content h2 {
+  margin-bottom: 1rem;
+  color: #4cafef;
+  text-align: center;
+}
+.modal .close-button {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #888;
+}
+.modal .close-button:hover {
+  color: #000;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /*# sourceMappingURL=styles.css.map */

@@ -4,6 +4,7 @@ export default class App {
   constructor() {
     this.mainContent = document.getElementById("main-content");
     this.navContainer = document.getElementById("nav-container");
+    this.footer = document.querySelector("footer"); // ✅ reference footer
 
     // Map URL path → page module (in /pages)
     this.routes = {
@@ -38,11 +39,11 @@ export default class App {
 
       this.navContainer.innerHTML = `
         <nav>
-            <ul>
-                <li><a href="/" data-link>Home</a></li>
-                <li><a href="/login" data-link>Login</a></li>
-                <li><a href="/admin" data-link>Admin</a></li>
-            </ul>
+          <ul>
+            <li><a href="/" data-link>Home</a></li>
+            <li><a href="/login" data-link>Login</a></li>
+            <li><a href="/admin" data-link>Admin</a></li>
+          </ul>
         </nav>`;
     }
   }
@@ -69,6 +70,16 @@ export default class App {
   async loadPage(path) {
     const normalized = this.normalizePath(path);
     const pageName = this.routes[normalized];
+
+    // ✅ Hide navbar + footer on /login
+    if (normalized === "/login") {
+      this.navContainer.style.display = "none";
+      if (this.footer) this.footer.style.display = "none";
+    } else {
+      this.navContainer.style.display = "block";
+      if (this.footer) this.footer.style.display = "block";
+    }
+
     await this.loadPageModule(pageName);
   }
 
