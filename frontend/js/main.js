@@ -1,5 +1,6 @@
 // Entry point for the frontend JavaScript application
 import App from './app.js';
+import("/js/pages/home.js")
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
