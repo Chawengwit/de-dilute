@@ -6,19 +6,25 @@
 export function validate(schema, property = "body") {
   return (req, res, next) => {
     const { error, value } = schema.validate(req[property], {
-      abortEarly: false,   // show all errors
-      stripUnknown: true,  // remove fields not in schema
-      convert: true,       // coerce types (e.g. "10" -> 10)
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
     });
 
     if (error) {
       return res.status(400).json({
         error: "Invalid request data",
-        details: error.details.map(d => d.message),
+        details: error.details.map((d) => d.message),
       });
     }
 
-    req[property] = value; // assign sanitized/validated values back
+    // ✅ safe assign (ไม่ reassign req.query/req.params ตรง ๆ)
+    if (property === "query" || property === "params") {
+      Object.assign(req[property], value);
+    } else {
+      req[property] = value;
+    }
+
     next();
   };
 }
