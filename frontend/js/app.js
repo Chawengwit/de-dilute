@@ -10,7 +10,6 @@ export default class App {
       "/": "home",
       "/home": "home",
       "/login": "login",
-      "/register": "register",
       "/admin": "admin",
       "/404": "404",
     };

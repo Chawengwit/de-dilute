@@ -1,3 +1,147 @@
-h1 {
-    color: blue;
+$primary-color: #4cafef;
+$secondary-color: #6c757d;
+$background-color: #f4f6f8;
+$white: #fff;
+$shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: $background-color;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-box {
+    background: $white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: $shadow;
+    width: 320px;
+    text-align: center;
+
+    h2 {
+        margin-bottom: 1.5rem;
+        color: $primary-color;
+    }
+}
+
+.input-group {
+    margin-bottom: 1rem;
+    text-align: left;
+
+    label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 0.3rem;
+        color: #333;
+    }
+
+    input {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1rem;
+
+        &:focus {
+            outline: none;
+            border-color: $primary-color;
+        }
+    }
+}
+
+.button-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+
+    &.btn-primary {
+        background: $primary-color;
+        color: $white;
+
+        &:hover {
+            background: darken($primary-color, 10%);
+        }
+    }
+
+    &.btn-secondary {
+        background: $secondary-color;
+        color: $white;
+
+        &:hover {
+            background: darken($secondary-color, 10%);
+        }
+    }
+}
+
+// Modal Styles
+.modal {
+    display: none; // hidden by default
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.5);
+
+    .modal-content {
+        background: $white;
+        margin: 10% auto;
+        padding: 2rem;
+        border-radius: 12px;
+        width: 400px;
+        box-shadow: $shadow;
+        position: relative;
+        animation: fadeIn 0.3s ease;
+
+        h2 {
+        margin-bottom: 1rem;
+        color: $primary-color;
+        text-align: center;
+        }
+    }
+
+    .close-button {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #888;
+
+        &:hover {
+            color: #000;
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

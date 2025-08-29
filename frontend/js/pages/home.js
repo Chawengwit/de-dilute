@@ -1,48 +1,38 @@
-import { getProducts } from "../api.js";
+// frontend/js/pages/home.js
+import { apiRequest } from "../utils.js";
 
-export async function init(container) {
+export function init(container) {
   container.innerHTML = `
-    <h1>Welcome to the Home Page</h1>
-    <div id="product-list">Loading products...</div>
+    <section class="home-page">
+      <h2>Products</h2>
+      <div id="product-list" class="product-list">Loading...</div>
+    </section>
   `;
 
-  const productList = document.getElementById("product-list");
+  const productList = container.querySelector("#product-list");
 
-  try {
-    const products = await getProducts();
+  // Load products
+  apiRequest("/api/products/public", "GET")
+    .then((products) => {
+      if (!products.length) {
+        productList.innerHTML = "<p>No products available.</p>";
+        return;
+      }
 
-    if (!products || products.length === 0) {
-      productList.innerHTML = "<p>No products available.</p>";
-      return;
-    }
-
-    productList.innerHTML = products
-      .map((product) => {
-        // render media (images/videos)
-        const mediaHTML = (product.media || [])
-          .map((m) => {
-            if (m.type === "image") {
-              return `<img src="${m.url}" alt="${product.name}" class="product-media" loading="lazy"/>`;
-            } else if (m.type === "video") {
-              return `<video src="${m.url}" controls class="product-media"></video>`;
-            }
-            return "";
-          })
-          .join("");
-
-        return `
-          <div class="product">
-            <h2>${product.name}</h2>
-            <p>${product.description || ""}</p>
-            <p><strong>Price:</strong> $${Number(product.price).toFixed(2)}</p>
-            <div class="media">${mediaHTML}</div>
+      productList.innerHTML = products
+        .map(
+          (p) => `
+          <div class="product-card">
+            <h3>${p.name}</h3>
+            <p>${p.description || ""}</p>
+            <p><strong>$${Number(p.price).toFixed(2)}</strong></p>
           </div>
-        `;
-      })
-      .join("");
-  } catch (err) {
-    console.error("⚠️ Error loading products:", err);
-    productList.innerHTML =
-      "<p>⚠️ Error loading products. Please try again later.</p>";
-  }
+        `
+        )
+        .join("");
+    })
+    .catch((err) => {
+      console.error("Error loading products:", err);
+      productList.innerHTML = "<p>❌ Failed to load products.</p>";
+    });
 }
