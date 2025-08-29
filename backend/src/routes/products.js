@@ -1,38 +1,23 @@
 import { Router } from "express";
 import pool from "../db.js";
-import Joi from "joi";
-import winston from "winston";
+import { validate } from "../middleware/validate.js";
+import {
+  productSchema,
+  updateProductSchema,
+  paginationSchema,
+  idSchema,
+} from "../schemas/schemas.js";
 
 const router = Router();
 
-// Winston logger setup
-const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "debug",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [new winston.transports.Console()],
-});
-
-// Validation schema for pagination
-const querySchema = Joi.object({
-  limit: Joi.number().integer().min(1).max(50).default(20),
-  offset: Joi.number().integer().min(0).default(0),
-});
-
-// Public route: GET /api/products/public
-router.get("/public", async (req, res) => {
+/**
+ * GET /api/products/public
+ * Public landing data (active products + media) with pagination
+ */
+router.get("/public", validate(paginationSchema, "query"), async (req, res) => {
   try {
-    // Validate query params
-    const { error, value } = querySchema.validate(req.query);
-    if(error){
-      logger.warn("Invalid query params", { details: error.details });
-      return res.status(400).json({ error: "Invalid query parameters" });
-    }
+    const { limit, offset } = req.query;
 
-    const { limit, offset } = value;
-    // Fetch products + media(JOIN)
     const query = `
       SELECT p.id, p.slug, p.name, p.description, p.price, p.created_at,
              COALESCE(
@@ -54,24 +39,91 @@ router.get("/public", async (req, res) => {
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2;
     `;
-
     const result = await pool.query(query, [limit, offset]);
-    logger.info("Public products fetched", {
-      count: result.rows.length,
-      limit,
-      offset,
-    });
-    
-    res.json(result.rows);
 
+    res.json(result.rows);
   } catch (err) {
-    logger.error("Error fetching public products", {
-      message: err.message,
-      stack: err.stack,
-    });
+    console.error("❌ Error fetching public products:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
 
+/**
+ * POST /api/products/add
+ * Create product (example admin route – add your auth/role middleware upstream)
+ */
+router.post("/add", validate(productSchema, "body"), async (req, res) => {
+  try {
+    const { slug, name, description, price, is_active } = req.body;
+
+    const query = `
+      INSERT INTO products (slug, name, description, price, is_active)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;
+    `;
+    const result = await pool.query(query, [slug, name, description ?? null, price, is_active ?? true]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    // handle unique violation for slug
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "Slug already exists" });
+    }
+    console.error("❌ Error adding product:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * PUT /api/products/update/:id
+ * Update product by id
+ */
+router.put("/update/:id", validate(idSchema, "params"), validate(updateProductSchema, "body"), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const fields = Object.keys(req.body);
+      const values = Object.values(req.body);
+
+      // build dynamic SET clause
+      const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(", ");
+      const query = `
+        UPDATE products
+        SET ${setClause}
+        WHERE id = $${values.length + 1}
+        RETURNING *;
+      `;
+
+      const result = await pool.query(query, [...values, id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res.json(result.rows[0]);
+    } catch (err) {
+      console.error("❌ Error updating product:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+/**
+ * DELETE /api/products/delete/:id
+ * Delete product by id
+ */
+router.delete("/delete/:id", validate(idSchema, "params"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query("DELETE FROM products WHERE id = $1 RETURNING *;", [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+    res.json({ message: "Product deleted", product: result.rows[0] });
+  } catch (err) {
+    console.error("❌ Error deleting product:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;
