@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'url';
-import path, { join } from 'path';
 import dotenv from 'dotenv';
 import app from './app.js';
 import pool from './db.js'; // PostgreSQL connection pool

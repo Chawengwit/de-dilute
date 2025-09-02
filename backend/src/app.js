@@ -19,18 +19,18 @@ const app = express();
 // ---------------- Middleware ---------------- //
 // CORS
 const corsOptions =
-  process.env.NODE_ENV === 'production'
+  process.env.NODE_ENV === "production"
     ? {
         origin: process.env.FRONTEND_URL,
-        credentials: false, // we use JWT, no cookies
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true, // allow cookies
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
       }
     : {
-        origin: 'http://localhost:8080', // frontend dev server
-        credentials: false,
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
+        origin: "http://localhost:8080",
+        credentials: true, // allow cookies in dev too
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
       };
 
 app.use(cors(corsOptions));
