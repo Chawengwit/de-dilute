@@ -6,15 +6,6 @@
 CREATE EXTENSION IF NOT EXISTS citext;
 
 -- ================
--- ENUM Types
--- ================
-DO $$ BEGIN
-    CREATE TYPE user_role AS ENUM ('CAN_MNG_PAGE');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
--- ================
 -- Users
 -- ================
 CREATE TABLE users (
@@ -22,7 +13,6 @@ CREATE TABLE users (
   email CITEXT UNIQUE NOT NULL,              -- login ใช้ email
   password_hash TEXT NOT NULL,
   display_name TEXT,
-  role user_role,                            -- ENUM, default NULL
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -77,6 +67,23 @@ CREATE TABLE settings (
 CREATE INDEX idx_settings_key ON settings(key);
 
 -- ================
+-- Permissions (minimal, per user)
+-- ================
+CREATE TABLE permissions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL                          -- เช่น "MANAGE_PRODUCTS", "VIEW_ANALYTICS"
+);
+
+-- Indexes
+CREATE INDEX idx_permissions_user_id ON permissions(user_id);
+CREATE INDEX idx_permissions_name ON permissions(name);
+
+-- ป้องกัน duplicate สิทธิ์ซ้ำใน user เดียวกัน
+ALTER TABLE permissions
+  ADD CONSTRAINT uq_permissions_user UNIQUE (user_id, name);
+
+-- ================
 -- Security / Data Integrity
 -- ================
 -- ป้องกัน orphan media
@@ -92,12 +99,11 @@ ALTER TABLE products
 -- Seed Data
 -- ================
 -- NOTE: เปลี่ยน password_hash ให้เป็น bcrypt hash จริงก่อน deploy
-INSERT INTO users(email, password_hash, display_name, role)
+INSERT INTO users(email, password_hash, display_name)
 VALUES (
   'admin@dedilute.com',
   '$2b$12$abcd1234hashdemo', -- bcrypt hash example only
-  'Admin',
-  'CAN_MNG_PAGE'
+  'Admin'
 )
 ON CONFLICT (email) DO NOTHING;
 
