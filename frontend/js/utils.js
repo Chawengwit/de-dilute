@@ -98,13 +98,6 @@ export function debounce(func, wait) {
 export function capitalize(str = "") {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
 }
-
-/**
- * ==========================
- * Notification System
- * ==========================
- */
-
 /**
  * Show a notification
  * @param {string} message - The text message
@@ -113,28 +106,31 @@ export function capitalize(str = "") {
  */
 export function showNotification(message, type = "info", duration = 5000) {
   // Create container if not exists
-  if (!$(".notification-container").length) {
-    $("body").append(`<div class="notification-container"></div>`);
+  let container = document.querySelector(".notification-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "notification-container";
+    document.body.appendChild(container);
   }
 
   // Build notification element
-  const notification = $(`
-    <div class="notification notification--${type}">
-      <div class="notification__content">
-        <i class="fas fa-${getNotificationIcon(type)}"></i>
-        <span>${capitalize(message)}</span>
-      </div>
-      <button class="notification__close">
-        <i class="fas fa-times"></i>
-      </button>
+  const notification = document.createElement("div");
+  notification.className = `notification notification--${type}`;
+  notification.innerHTML = `
+    <div class="notification__content">
+      <i class="fas fa-${getNotificationIcon(type)}"></i>
+      <span>${capitalize(message)}</span>
     </div>
-  `);
+    <button class="notification__close">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
 
   // Append to container
-  $(".notification-container").append(notification);
+  container.appendChild(notification);
 
   // Animate in
-  setTimeout(() => notification.addClass("notification--show"), 50);
+  setTimeout(() => notification.classList.add("notification--show"), 50);
 
   // Auto hide
   if (duration > 0) {
@@ -142,17 +138,18 @@ export function showNotification(message, type = "info", duration = 5000) {
   }
 
   // Close button handler
-  notification.find(".notification__close").on("click", () => {
-    hideNotification(notification);
-  });
+  const closeBtn = notification.querySelector(".notification__close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => hideNotification(notification));
+  }
 }
 
 /**
  * Hide & remove notification
- * @param {jQuery} notification
+ * @param {HTMLElement} notification
  */
 function hideNotification(notification) {
-  notification.removeClass("notification--show");
+  notification.classList.remove("notification--show");
   setTimeout(() => notification.remove(), 300);
 }
 
