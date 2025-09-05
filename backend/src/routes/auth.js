@@ -37,11 +37,18 @@ router.post("/register", validate(registerSchema), async (req, res) => {
 
         // Insert user
         const result = await pool.query(
-            "INSERT INTO users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id, email, display_name, created_at",
+            `INSERT INTO users (email, password_hash, display_name)
+            VALUES ($1, $2, $3)
+            RETURNING id, email, display_name, created_at`,
             [email, password_hash, display_name || null]
         );
 
         const user = result.rows[0];
+
+        await pool.query(
+            "INSERT INTO permissions (user_id, name) VALUES ($1, NULL)",
+            [user.id]
+        );
 
         res.status(201).json({
             message: "User registered successfully.",
@@ -112,30 +119,35 @@ router.post("/logout", (req, res) => {
  * POST /api/auth/permissions
  */
 router.post("/permissions", authenticate, async (req, res) => {
-    try {
-        const { permission } = req.body;
-        if (!permission) {
-            return res.status(400).json({ error: "Permission code is required" });
-        }
+  try {
+    const { permission } = req.body;
 
-        const { id } = req.user;
-
-        const ADMIN_PERMISSION_CODE = process.env.permission;
-
-        if (permission === ADMIN_PERMISSION_CODE) {
-            const result = await pool.query(
-                "SELECT 1 FROM user_permissions WHERE user_id = $1 AND permission_code = $2 LIMIT 1",
-                [id, ADMIN_PERMISSION_CODE]
-            );
-
-            return res.json({ hasPermission: result.rows.length > 0 });
-        }
-
-        return res.status(400).json({ error: "Unknown permission code" });
-    } catch (err) {
-        console.error("❌ check-permissions error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
+    if (!permission) {
+      return res.status(400).json({ error: "Permission code is required" });
     }
+
+    // Debug log
+    console.log("🔑 Requested permission key:", permission);
+    console.log("🌍 ENV value:", process.env[permission]);
+
+    const envPermission = process.env[permission];
+    if (!envPermission) {
+      return res.status(400).json({ error: "Unknown permission code" });
+    }
+
+    const { id } = req.user;
+
+    const result = await pool.query(
+      "SELECT 1 FROM permissions WHERE user_id = $1 AND name = $2 LIMIT 1",
+      [id, envPermission]
+    );
+
+    return res.json({ hasPermission: result.rows.length > 0 });
+  } catch (err) {
+    console.error("❌ check-permissions error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
+
 
 export default router;

@@ -57,17 +57,24 @@ export function initModal(modalId) {
  */
 export async function apiRequest(url, method = "GET", body = null) {
   const headers = { "Content-Type": "application/json" };
-  const token = localStorage.getItem("token");
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const options = { method, headers };
-  if (body) options.body = JSON.stringify(body);
+  const options = {
+    method,
+    headers,
+    credentials: "include",
+  };
+
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
 
   const res = await fetch(url, options);
+
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(msg || "API Request failed");
   }
+
   return res.json();
 }
 

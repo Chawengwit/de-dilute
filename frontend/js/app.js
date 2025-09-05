@@ -1,4 +1,5 @@
 // SPA Router + Page Loader (Class-based)
+import { apiRequest } from "./utils.js";
 
 export default class App {
   constructor() {
@@ -35,23 +36,24 @@ export default class App {
 
       this.navContainer.innerHTML = await res.text();
 
-      // checking permission Admin
       try {
-        const checkRes = await fetch("/api/auth/permissions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ permission: "ADMIN" }),
-        });
-
-        const data = await checkRes.json();
+        const data = await apiRequest(
+          "/api/auth/permissions",
+          "POST",
+          { permission: "ADMIN" }
+        );
 
         if (!data.hasPermission) {
           const adminLink = this.navContainer.querySelector('a[href="/admin"]');
           if (adminLink) adminLink.parentElement.remove();
         }
       } catch (err) {
-        console.error("⚠️ Permission check error:", err);
+        if (err.message.includes("Unauthorized")) {
+          const adminLink = this.navContainer.querySelector('a[href="/admin"]');
+          if (adminLink) adminLink.parentElement.remove();
+        } else {
+          console.error("⚠️ Permission check error:", err.message);
+        }
       }
     } catch (err) {
       console.error("❌ Navigation load error:", err);
@@ -65,6 +67,7 @@ export default class App {
         </nav>`;
     }
   }
+
 
   setupNavigation() {
     this.navContainer.addEventListener("click", (e) => {
@@ -89,22 +92,19 @@ export default class App {
     const normalized = this.normalizePath(path);
     const pageName = this.routes[normalized];
 
-    // checking permission Admin
     if (normalized === "/admin") {
       try {
-        const checkRes = await fetch("/api/auth/permissions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ permission: "ADMIN" }),
-        });
-        const data = await checkRes.json();
+        const data = await apiRequest(
+          "/api/auth/permissions",
+          "POST",
+          { permission: "ADMIN" }
+        );
 
         if (!data.hasPermission) {
           return this.navigateTo("/login");
         }
       } catch (err) {
-        console.error("⚠️ Admin permission check failed:", err);
+        console.error("⚠️ Admin permission check failed:", err.message);
         return this.navigateTo("/login");
       }
     }
