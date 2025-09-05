@@ -1,95 +1,118 @@
-// frontend/js/pages/login.js
-import { openModal, closeModal, initModal, apiRequest } from "../utils.js";
+import { 
+  openModal, 
+  closeModal, 
+  initModal, 
+  apiRequest, 
+  showNotification 
+} from "../utils.js";
 
 export function init(container) {
-    container.innerHTML = `
-        <div class="login-container">
-        <div class="login-box">
-            <h2>Login</h2>
-            <form id="login-form">
-            <div class="input-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
-            </div>
+  container.innerHTML = `
+    <div class="login-container">
+      <div class="login-box">
+        <h2>Login</h2>
+        <form id="login-form">
+          <div class="input-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+          </div>
 
-            <div class="input-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
+          <div class="input-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+          </div>
 
-            <div class="button-group">
-                <button type="submit" class="btn btn-primary">Login</button>
-                <button type="button" id="open-register-modal" class="btn btn-secondary">Register</button>
-            </div>
-            </form>
-        </div>
-        </div>
+          <div class="button-group">
+            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="button" id="open-register-modal" class="btn btn-secondary">Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
-        <!-- Register Modal -->
-        <div id="register-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Create Account</h2>
-            <form id="register-form">
-            <div class="input-group">
-                <label for="register-username">Username</label>
-                <input type="text" id="register-username" name="username" required>
-            </div>
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Create Account</h2>
+        <form id="register-form">
+          <div class="input-group">
+            <label for="register-email">Email</label>
+            <input type="email" id="register-email" name="email" required>
+          </div>
 
-            <div class="input-group">
-                <label for="register-password">Password</label>
-                <input type="password" id="register-password" name="password" required>
-            </div>
+          <div class="input-group">
+            <label for="register-password">Password</label>
+            <input type="password" id="register-password" name="password" required>
+          </div>
 
-            <div class="button-group">
-                <button type="submit" class="btn btn-primary">Register</button>
-            </div>
-            </form>
-        </div>
-        </div>
-    `;
+          <div class="input-group">
+            <label for="register-display-name">Display Name</label>
+            <input type="text" id="register-display-name" name="display_name" required>
+          </div>
 
-    const loginForm = container.querySelector("#login-form");
-    const registerForm = container.querySelector("#register-form");
+          <div class="button-group">
+            <button type="submit" class="btn btn-primary">Register</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
 
-    // Init modal behavior
-    initModal("register-modal");
+  const loginForm = container.querySelector("#login-form");
+  const registerForm = container.querySelector("#register-form");
 
-    // Open Register Modal
-    container.querySelector("#open-register-modal").addEventListener("click", () => openModal("register-modal"));
+  // Init modal behavior
+  initModal("register-modal");
 
-    // Handle Login Submit
-    loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const username = container.querySelector("#username").value.trim();
-        const password = container.querySelector("#password").value.trim();
+  // Open Register Modal
+  container.querySelector("#open-register-modal").addEventListener("click", () => openModal("register-modal"));
 
-        try {
-            const data = await apiRequest("/api/auth/login", "POST", { username, password });
+  // Handle Login Submit
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = container.querySelector("#email").value.trim();
+    const password = container.querySelector("#password").value.trim();
 
-            localStorage.setItem("token", data.token);
-            alert("✅ Login success!");
-            window.location.href = "/admin"; // redirect SPA route
-        } catch (err) {
-            console.error("Login Error:", err);
-            alert("❌ Invalid username or password");
-        }
-    });
+    try {
+      await apiRequest(
+        "/api/auth/login",
+        "POST",
+        { email, password },
+        { withCredentials: true } // allow cookies
+      );
 
-    // Handle Register Submit
-    registerForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const username = container.querySelector("#register-username").value.trim();
-        const password = container.querySelector("#register-password").value.trim();
+      showNotification("Login success!", "success");
+      window.location.href = "/"; // redirect SPA route
+    } catch (err) {
+      console.error("Login Error:", err);
+      showNotification("Invalid email or password", "error");
+    }
+  });
 
-        try {
-            await apiRequest("/api/auth/register", "POST", { username, password });
-            alert("✅ Registration successful! Please login.");
-            closeModal("register-modal");
-            registerForm.reset();
-        } catch (err) {
-            console.error("Register Error:", err);
-            alert("❌ Registration failed");
-        }
-    });
+  // Handle Register Submit
+  registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = container.querySelector("#register-email").value.trim();
+    const password = container.querySelector("#register-password").value.trim();
+    const display_name = container
+      .querySelector("#register-display-name")
+      .value.trim();
+
+    try {
+      await apiRequest(
+        "/api/auth/register",
+        "POST",
+        { email, password, display_name },
+        { withCredentials: true }
+      );
+
+      showNotification("Registration successful! Please login.", "success");
+      closeModal("register-modal");
+      registerForm.reset();
+    } catch (err) {
+      console.error("Register Error:", err);
+      showNotification("Registration failed", "error");
+    }
+  });
 }

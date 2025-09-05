@@ -72,7 +72,7 @@ CREATE INDEX idx_settings_key ON settings(key);
 CREATE TABLE permissions (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL                          -- เช่น "MANAGE_PRODUCTS", "VIEW_ANALYTICS"
+  name TEXT                                   
 );
 
 -- Indexes

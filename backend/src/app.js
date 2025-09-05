@@ -5,6 +5,7 @@ import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import pool from './db.js';
+import cookieParser from "cookie-parser";
 
 // Import API routes
 import authRoutes from './routes/auth.js';
@@ -19,18 +20,18 @@ const app = express();
 // ---------------- Middleware ---------------- //
 // CORS
 const corsOptions =
-  process.env.NODE_ENV === 'production'
+  process.env.NODE_ENV === "production"
     ? {
         origin: process.env.FRONTEND_URL,
-        credentials: false, // we use JWT, no cookies
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true, // allow cookies
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
       }
     : {
-        origin: 'http://localhost:8080', // frontend dev server
-        credentials: false,
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
+        origin: "http://localhost:8080",
+        credentials: true, // allow cookies in dev too
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
       };
 
 app.use(cors(corsOptions));
@@ -38,6 +39,7 @@ app.use(cors(corsOptions));
 // Parse JSON & form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Security & performance
 app.use(helmet());        // secure HTTP headers
