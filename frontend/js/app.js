@@ -4,7 +4,7 @@ export default class App {
   constructor() {
     this.mainContent = document.getElementById("main-content");
     this.navContainer = document.getElementById("nav-container");
-    this.footer = document.querySelector("footer"); // ✅ reference footer
+    this.footer = document.querySelector("footer"); // reference footer
 
     // Map URL path → page module (in /pages)
     this.routes = {
@@ -34,6 +34,25 @@ export default class App {
       if (!res.ok) throw new Error("Failed to load navigation");
 
       this.navContainer.innerHTML = await res.text();
+
+      // checking permission Admin
+      try {
+        const checkRes = await fetch("/api/auth/permissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ permission: "ADMIN" }),
+        });
+
+        const data = await checkRes.json();
+
+        if (!data.hasPermission) {
+          const adminLink = this.navContainer.querySelector('a[href="/admin"]');
+          if (adminLink) adminLink.parentElement.remove();
+        }
+      } catch (err) {
+        console.error("⚠️ Permission check error:", err);
+      }
     } catch (err) {
       console.error("❌ Navigation load error:", err);
 
@@ -42,7 +61,6 @@ export default class App {
           <ul>
             <li><a href="/" data-link>Home</a></li>
             <li><a href="/login" data-link>Login</a></li>
-            <li><a href="/admin" data-link>Admin</a></li>
           </ul>
         </nav>`;
     }
@@ -71,7 +89,27 @@ export default class App {
     const normalized = this.normalizePath(path);
     const pageName = this.routes[normalized];
 
-    // ✅ Hide navbar + footer on /login
+    // checking permission Admin
+    if (normalized === "/admin") {
+      try {
+        const checkRes = await fetch("/api/auth/permissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ permission: "ADMIN" }),
+        });
+        const data = await checkRes.json();
+
+        if (!data.hasPermission) {
+          return this.navigateTo("/login");
+        }
+      } catch (err) {
+        console.error("⚠️ Admin permission check failed:", err);
+        return this.navigateTo("/login");
+      }
+    }
+
+    // Hide navbar + footer on /login
     if (normalized === "/login") {
       this.navContainer.style.display = "none";
       if (this.footer) this.footer.style.display = "none";

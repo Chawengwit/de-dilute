@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 import pool from "../db.js";
 import dotenv from "dotenv";
 
+// middleware
+import { authenticate } from "../middleware/auth.js";
+
 // validation middleware
 import { validate } from "../middleware/validate.js";
 import { registerSchema, loginSchema } from "../schemas/schemas.js";
@@ -85,10 +88,8 @@ router.post("/login", validate(loginSchema), async (req, res) => {
         res.json({
             message: "Login successful.",
             user: {
-                id: user.id,
                 email: user.email,
                 display_name: user.display_name,
-                created_at: user.created_at,
             },
         });
     } catch (err) {
@@ -105,6 +106,36 @@ router.post("/login", validate(loginSchema), async (req, res) => {
 router.post("/logout", (req, res) => {
     res.clearCookie("auth_token");
     res.json({ message: "Logged out successfully." });
+});
+
+/**
+ * POST /api/auth/permissions
+ */
+router.post("/permissions", authenticate, async (req, res) => {
+    try {
+        const { permission } = req.body;
+        if (!permission) {
+            return res.status(400).json({ error: "Permission code is required" });
+        }
+
+        const { id } = req.user;
+
+        const ADMIN_PERMISSION_CODE = process.env.permission;
+
+        if (permission === ADMIN_PERMISSION_CODE) {
+            const result = await pool.query(
+                "SELECT 1 FROM user_permissions WHERE user_id = $1 AND permission_code = $2 LIMIT 1",
+                [id, ADMIN_PERMISSION_CODE]
+            );
+
+            return res.json({ hasPermission: result.rows.length > 0 });
+        }
+
+        return res.status(400).json({ error: "Unknown permission code" });
+    } catch (err) {
+        console.error("❌ check-permissions error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
 
 export default router;

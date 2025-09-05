@@ -66,9 +66,7 @@ export function init(container) {
   initModal("register-modal");
 
   // Open Register Modal
-  container
-    .querySelector("#open-register-modal")
-    .addEventListener("click", () => openModal("register-modal"));
+  container.querySelector("#open-register-modal").addEventListener("click", () => openModal("register-modal"));
 
   // Handle Login Submit
   loginForm.addEventListener("submit", async (e) => {
@@ -85,7 +83,7 @@ export function init(container) {
       );
 
       showNotification("Login success!", "success");
-      window.location.href = "/admin"; // redirect SPA route
+      window.location.href = "/"; // redirect SPA route
     } catch (err) {
       console.error("Login Error:", err);
       showNotification("Invalid email or password", "error");
