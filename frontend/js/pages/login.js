@@ -79,7 +79,7 @@ export function init(container) {
         "/api/auth/login",
         "POST",
         { email, password },
-        { withCredentials: true } // allow cookies
+        { withCredentials: true } // cookie จะถูกเซ็ตอัตโนมัติ
       );
 
       showNotification("Login success!", "success");
@@ -95,9 +95,7 @@ export function init(container) {
     e.preventDefault();
     const email = container.querySelector("#register-email").value.trim();
     const password = container.querySelector("#register-password").value.trim();
-    const display_name = container
-      .querySelector("#register-display-name")
-      .value.trim();
+    const display_name = container.querySelector("#register-display-name").value.trim();
 
     try {
       await apiRequest(
