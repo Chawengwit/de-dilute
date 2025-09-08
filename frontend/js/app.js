@@ -1,13 +1,11 @@
-// SPA Router + Page Loader (Class-based)
 import { apiRequest } from "./utils.js";
 
 export default class App {
   constructor() {
     this.mainContent = document.getElementById("main-content");
     this.navContainer = document.getElementById("nav-container");
-    this.footer = document.querySelector("footer"); // reference footer
+    this.footer = document.querySelector("footer");
 
-    // Map URL path → page module (in /pages)
     this.routes = {
       "/": "home",
       "/home": "home",
@@ -23,7 +21,6 @@ export default class App {
       this.loadPage(window.location.pathname);
     });
 
-    // Handle browser back/forward
     window.addEventListener("popstate", () => {
       this.loadPage(window.location.pathname);
     });
@@ -36,13 +33,25 @@ export default class App {
 
       this.navContainer.innerHTML = await res.text();
 
+      // Check login status via /api/auth/me
       try {
-        const data = await apiRequest(
-          "/api/auth/permissions",
-          "POST",
-          { permission: "ADMIN" }
-        );
+        const me = await apiRequest("/api/auth/me", "GET", null, { withCredentials: true });
+        if (me.user) {
+          const loginLink = this.navContainer.querySelector('a[href="/login"]');
+          if (loginLink) {
+            loginLink.textContent = "Logout";
+            loginLink.setAttribute("href", "#logout");
+            loginLink.setAttribute("data-logout", "true");
+            loginLink.removeAttribute("data-link");
+          }
+        }
+      } catch {
+        // not logged in → keep Login link
+      }
 
+      // Check admin permission
+      try {
+        const data = await apiRequest("/api/auth/permissions", "POST", { permission: "ADMIN" });
         if (!data.hasPermission) {
           const adminLink = this.navContainer.querySelector('a[href="/admin"]');
           if (adminLink) adminLink.parentElement.remove();
@@ -68,14 +77,24 @@ export default class App {
     }
   }
 
-
   setupNavigation() {
-    this.navContainer.addEventListener("click", (e) => {
-      const link = e.target.closest("a[data-link]");
-      if (link) {
-        e.preventDefault();
-        this.navigateTo(link.getAttribute("href"));
+    this.navContainer.addEventListener("click", async (e) => {
+      const link = e.target.closest("a[data-link], a[data-logout]");
+      if (!link) return;
+      e.preventDefault();
+
+      // Handle logout
+      if (link.dataset.logout) {
+        try {
+          await apiRequest("/api/auth/logout", "POST", null, { withCredentials: true });
+          this.navigateTo("/login");
+        } catch (err) {
+          console.error("⚠️ Logout failed:", err.message);
+        }
+        return;
       }
+
+      this.navigateTo(link.getAttribute("href"));
     });
   }
 
@@ -94,12 +113,7 @@ export default class App {
 
     if (normalized === "/admin") {
       try {
-        const data = await apiRequest(
-          "/api/auth/permissions",
-          "POST",
-          { permission: "ADMIN" }
-        );
-
+        const data = await apiRequest("/api/auth/permissions", "POST", { permission: "ADMIN" });
         if (!data.hasPermission) {
           return this.navigateTo("/login");
         }
@@ -127,7 +141,6 @@ export default class App {
       this.initPageModule(module, pageName);
     } catch (err) {
       console.error(`❌ Error loading page module "${pageName}":`, err);
-      // Fallback to 404
       if (pageName !== "404") {
         this.loadPageModule("404");
       } else {
@@ -138,7 +151,7 @@ export default class App {
 
   initPageModule(module, pageName) {
     if (module && typeof module.init === "function") {
-      this.mainContent.innerHTML = ""; // clear old content
+      this.mainContent.innerHTML = "";
       module.init(this.mainContent);
     } else {
       console.error(`⚠️ Module "${pageName}" missing init() function.`);
