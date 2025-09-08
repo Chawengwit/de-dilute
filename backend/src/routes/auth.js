@@ -126,10 +126,6 @@ router.post("/permissions", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Permission code is required" });
     }
 
-    // Debug log
-    console.log("🔑 Requested permission key:", permission);
-    console.log("🌍 ENV value:", process.env[permission]);
-
     const envPermission = process.env[permission];
     if (!envPermission) {
       return res.status(400).json({ error: "Unknown permission code" });
