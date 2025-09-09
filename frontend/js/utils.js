@@ -44,42 +44,6 @@ export function initModal(modalId) {
 
 /**
  * ==========================
- * API Utilities
- * ==========================
- */
-
-/**
- * API Request Wrapper (fetch)
- * @param {string} url
- * @param {string} method
- * @param {object|null} body
- * @returns {Promise<object>}
- */
-export async function apiRequest(url, method = "GET", body = null) {
-  const headers = { "Content-Type": "application/json" };
-
-  const options = {
-    method,
-    headers,
-    credentials: "include",
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const res = await fetch(url, options);
-
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || "API Request failed");
-  }
-
-  return res.json();
-}
-
-/**
- * ==========================
  * General Utilities
  * ==========================
  */
@@ -105,6 +69,7 @@ export function debounce(func, wait) {
 export function capitalize(str = "") {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
 }
+
 /**
  * Show a notification
  * @param {string} message - The text message

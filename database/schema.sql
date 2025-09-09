@@ -54,17 +54,21 @@ CREATE INDEX idx_product_media_type ON product_media(type);
 -- ================
 -- Settings
 -- (ใช้เก็บ homepage title, banner, promo video ฯลฯ)
+-- รองรับ multi-language (th / en)
 -- ================
 CREATE TABLE settings (
   id BIGSERIAL PRIMARY KEY,
-  key TEXT UNIQUE NOT NULL,                     -- เช่น "homepage_title"
+  key TEXT NOT NULL,                               -- เช่น "homepage_title"
   value TEXT,
   type TEXT CHECK (type IN ('text','image','video','json')) DEFAULT 'text',
-  updated_at TIMESTAMPTZ DEFAULT now()
+  lang TEXT CHECK (lang IN ('th','en')) DEFAULT 'en',
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (key, lang)                               -- กัน key ซ้ำในภาษาเดียวกัน
 );
 
--- Index
+-- Indexes
 CREATE INDEX idx_settings_key ON settings(key);
+CREATE INDEX idx_settings_lang ON settings(lang);
 
 -- ================
 -- Permissions (minimal, per user)
@@ -117,3 +121,10 @@ VALUES (
   true
 )
 ON CONFLICT (slug) DO NOTHING;
+
+-- Demo settings (multi-language)
+INSERT INTO settings (key, value, type, lang)
+VALUES
+  ('homepage_title', 'De Dilute - สดชื่นทุกวัน', 'text', 'th'),
+  ('homepage_title', 'De Dilute - Refreshing Everyday', 'text', 'en')
+ON CONFLICT (key, lang) DO NOTHING;

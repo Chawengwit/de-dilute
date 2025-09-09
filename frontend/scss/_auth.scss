@@ -1,0 +1,82 @@
+@use "variables" as v;
+@use "sass:color";
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-box {
+  margin-top: 40px;
+  background: var(--color-white);
+  padding: 2rem;
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 320px;
+  text-align: center;
+
+  h2 {
+    margin-bottom: 1.5rem;
+    color: v.$primary-color;
+  }
+}
+
+.input-group {
+  margin-bottom: 1rem;
+  text-align: left;
+
+  label {
+    display: block;
+    font-size: var(--font-size-sm);
+    margin-bottom: 0.3rem;
+    color: var(--color-gray-700);
+  }
+
+  input {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-base);
+
+    &:focus {
+      outline: none;
+      border-color: v.$primary-color;
+      box-shadow: 0 0 0 2px color.scale(v.$primary-color, $lightness: 40%); // ✅ แก้แล้ว
+    }
+  }
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: background var(--transition-normal);
+
+  &.btn-primary {
+    background: v.$primary-color;
+    color: v.$white;
+
+    &:hover {
+      background: color.scale(v.$primary-color, $lightness: -10%); // ✅ แก้แล้ว
+    }
+  }
+
+  &.btn-secondary {
+    background: v.$secondary-color;
+    color: v.$white;
+
+    &:hover {
+      background: color.scale(v.$secondary-color, $lightness: -10%); // ✅ แก้แล้ว
+    }
+  }
+}
