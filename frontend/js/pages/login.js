@@ -1,10 +1,5 @@
-import { 
-  openModal, 
-  closeModal, 
-  initModal, 
-  apiRequest, 
-  showNotification 
-} from "../utils.js";
+import { openModal, closeModal, initModal, showNotification } from "../utils.js";
+import { login, register } from "../api.js";
 
 export function init(container) {
   container.innerHTML = `
@@ -66,7 +61,9 @@ export function init(container) {
   initModal("register-modal");
 
   // Open Register Modal
-  container.querySelector("#open-register-modal").addEventListener("click", () => openModal("register-modal"));
+  container
+    .querySelector("#open-register-modal")
+    .addEventListener("click", () => openModal("register-modal"));
 
   // Handle Login Submit
   loginForm.addEventListener("submit", async (e) => {
@@ -75,13 +72,7 @@ export function init(container) {
     const password = container.querySelector("#password").value.trim();
 
     try {
-      await apiRequest(
-        "/api/auth/login",
-        "POST",
-        { email, password },
-        { withCredentials: true } // cookie จะถูกเซ็ตอัตโนมัติ
-      );
-
+      await login(email, password);
       showNotification("Login success!", "success");
       window.location.href = "/"; // redirect SPA route
     } catch (err) {
@@ -98,13 +89,7 @@ export function init(container) {
     const display_name = container.querySelector("#register-display-name").value.trim();
 
     try {
-      await apiRequest(
-        "/api/auth/register",
-        "POST",
-        { email, password, display_name },
-        { withCredentials: true }
-      );
-
+      await register(email, password, display_name);
       showNotification("Registration successful! Please login.", "success");
       closeModal("register-modal");
       registerForm.reset();

@@ -1,9 +1,14 @@
-// frontend/js/pages/home.js
-import { apiRequest } from "../utils.js";
+import { getProducts } from "../api.js";
 
 export function init(container) {
   container.innerHTML = `
     <section class="home-page">
+      <label for="language-select">Select Language:</label>
+      <select id="language-select" name="language">
+        <option value="en">English</option>
+        <option value="th">ไทย</option>
+      </select>
+
       <h2>Products</h2>
       <div id="product-list" class="product-list">Loading...</div>
     </section>
@@ -11,10 +16,9 @@ export function init(container) {
 
   const productList = container.querySelector("#product-list");
 
-  // Load products
-  apiRequest("/api/products/public", "GET")
+  getProducts(10, 0)
     .then((products) => {
-      if (!products.length) {
+      if (!products || !products.length) {
         productList.innerHTML = "<p>No products available.</p>";
         return;
       }
@@ -32,7 +36,7 @@ export function init(container) {
         .join("");
     })
     .catch((err) => {
-      console.error("Error loading products:", err);
+      console.error("❌ Error loading products:", err);
       productList.innerHTML = "<p>❌ Failed to load products.</p>";
     });
 }

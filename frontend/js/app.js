@@ -1,4 +1,8 @@
-import { apiRequest } from "./utils.js";
+import {
+  getCurrentUser,
+  logout,
+  checkPermission,
+} from "./api.js";
 
 export default class App {
   constructor() {
@@ -35,8 +39,8 @@ export default class App {
 
       // Check login status via /api/auth/me
       try {
-        const me = await apiRequest("/api/auth/me", "GET", null, { withCredentials: true });
-        if (me.user) {
+        const me = await getCurrentUser();
+        if (me) {
           const loginLink = this.navContainer.querySelector('a[href="/login"]');
           if (loginLink) {
             loginLink.textContent = "Logout";
@@ -51,8 +55,8 @@ export default class App {
 
       // Check admin permission
       try {
-        const data = await apiRequest("/api/auth/permissions", "POST", { permission: "ADMIN" });
-        if (!data.hasPermission) {
+        const hasPermission = await checkPermission("ADMIN");
+        if (!hasPermission) {
           const adminLink = this.navContainer.querySelector('a[href="/admin"]');
           if (adminLink) adminLink.parentElement.remove();
         }
@@ -86,7 +90,7 @@ export default class App {
       // Handle logout
       if (link.dataset.logout) {
         try {
-          await apiRequest("/api/auth/logout", "POST", null, { withCredentials: true });
+          await logout();
           this.navigateTo("/login");
         } catch (err) {
           console.error("⚠️ Logout failed:", err.message);
@@ -102,9 +106,9 @@ export default class App {
     return this.routes[path] ? path : "/404";
   }
 
-  navigateTo(path) {
+  async navigateTo(path) {
     window.history.pushState({}, "", path);
-    this.loadPage(path);
+    await this.loadPage(path);
   }
 
   async loadPage(path) {
@@ -113,8 +117,8 @@ export default class App {
 
     if (normalized === "/admin") {
       try {
-        const data = await apiRequest("/api/auth/permissions", "POST", { permission: "ADMIN" });
-        if (!data.hasPermission) {
+        const hasPermission = await checkPermission("ADMIN");
+        if (!hasPermission) {
           return this.navigateTo("/login");
         }
       } catch (err) {
