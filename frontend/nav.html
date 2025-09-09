@@ -1,7 +1,23 @@
 <nav>
   <ul>
-    <li><a href="/" data-link class="nav-home">Home</a></li>
-    <li><a href="/login" data-link class="nav-login">Login</a></li>
-    <li><a href="/admin" data-link class="nav-admin">Admin</a></li>
+    <li><a href="/" data-link class="nav-home" data-i18n="nav.home">Home</a></li>
+    <li><a href="/login" data-link class="nav-login" data-i18n="nav.login">Login</a></li>
+    <li><a href="/admin" data-link class="nav-admin" data-i18n="nav.admin">Admin</a></li>
   </ul>
+
+  <div class="nav-settings">
+    <!-- Language Selector -->
+    <label for="lang-select" data-i18n="settings.language">Language</label>
+    <select id="lang-select">
+      <option value="en" data-i18n="settings.language.en">English</option>
+      <option value="th" data-i18n="settings.language.th">ไทย</option>
+    </select>
+
+    <!-- Theme Selector -->
+    <label for="theme-select" data-i18n="settings.theme">Theme</label>
+    <select id="theme-select">
+      <option value="light" data-i18n="settings.theme.light">Light</option>
+      <option value="dark" data-i18n="settings.theme.dark">Dark</option>
+    </select>
+  </div>
 </nav>

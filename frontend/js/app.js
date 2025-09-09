@@ -4,6 +4,15 @@ import {
   checkPermission,
 } from "./api.js";
 
+import {
+  initSettings,
+  getLanguage,
+  setLanguageSetting,
+  setThemeSetting,
+} from "./settings.js";
+
+import { setLanguage, applyTranslations } from "./i18n.js";
+
 export default class App {
   constructor() {
     this.mainContent = document.getElementById("main-content");
@@ -19,7 +28,13 @@ export default class App {
     };
   }
 
-  init() {
+  async init() {
+    // 1. load settings
+    await initSettings();
+    const lang = getLanguage();
+    await setLanguage(lang);
+
+    // 2. load navigation + page
     this.loadNavigation().then(() => {
       this.setupNavigation();
       this.loadPage(window.location.pathname);
@@ -37,7 +52,30 @@ export default class App {
 
       this.navContainer.innerHTML = await res.text();
 
-      // Check login status via /api/auth/me
+      // Apply translations to nav
+      applyTranslations(this.navContainer);
+
+      // --- Setup Language & Theme Selectors ---
+      const langSelect = this.navContainer.querySelector("#lang-select");
+      if (langSelect) {
+        langSelect.value = getLanguage();
+        langSelect.addEventListener("change", async (e) => {
+          const newLang = e.target.value;
+          await setLanguageSetting(newLang);
+          await setLanguage(newLang);
+          applyTranslations(document); // update UI
+        });
+      }
+
+      const themeSelect = this.navContainer.querySelector("#theme-select");
+      if (themeSelect) {
+        themeSelect.addEventListener("change", async (e) => {
+          const newTheme = e.target.value;
+          await setThemeSetting(newTheme);
+        });
+      }
+
+      // --- Check login status via /api/auth/me ---
       try {
         const me = await getCurrentUser();
         if (me) {
@@ -53,7 +91,7 @@ export default class App {
         // not logged in → keep Login link
       }
 
-      // Check admin permission
+      // --- Check admin permission ---
       try {
         const hasPermission = await checkPermission("ADMIN");
         if (!hasPermission) {
@@ -74,8 +112,8 @@ export default class App {
       this.navContainer.innerHTML = `
         <nav>
           <ul>
-            <li><a href="/" data-link>Home</a></li>
-            <li><a href="/login" data-link>Login</a></li>
+            <li><a href="/" data-link data-i18n="nav.home">Home</a></li>
+            <li><a href="/login" data-link data-i18n="nav.login">Login</a></li>
           </ul>
         </nav>`;
     }
@@ -143,6 +181,8 @@ export default class App {
     try {
       const module = await import(`./pages/${pageName}.js`);
       this.initPageModule(module, pageName);
+      // re-apply translation after page render
+      applyTranslations(this.mainContent);
     } catch (err) {
       console.error(`❌ Error loading page module "${pageName}":`, err);
       if (pageName !== "404") {

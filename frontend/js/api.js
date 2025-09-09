@@ -8,6 +8,7 @@ const api = axios.create({
   withCredentials: true, // ส่ง cookie JWT ไปด้วย
 });
 
+/* -------------------- Products -------------------- */
 export async function getProducts(limit = 10, offset = 0) {
   try {
     const res = await api.get("/products/public", {
@@ -20,21 +21,35 @@ export async function getProducts(limit = 10, offset = 0) {
   }
 }
 
-export async function getSettings(lang = "en") {
+/* -------------------- Settings -------------------- */
+export async function getSettings() {
   try {
-    const res = await api.get("/settings", {
-      params: { lang },
-    });
+    const res = await api.get("/settings");
     return res.data;
   } catch (err) {
-    console.error(`❌ Error fetching settings for ${lang}:`, err);
+    console.error("❌ Error fetching settings:", err);
     throw new Error("Failed to load settings");
   }
 }
 
+export async function saveSettings(settings) {
+  try {
+    const res = await api.post("/settings", settings);
+    return res.data;
+  } catch (err) {
+    console.error("❌ Error saving settings:", err);
+    throw new Error("Failed to save settings");
+  }
+}
+
+/* -------------------- Auth -------------------- */
 export async function register(email, password, display_name) {
   try {
-    const res = await api.post("/auth/register", { email, password, display_name });
+    const res = await api.post("/auth/register", {
+      email,
+      password,
+      display_name,
+    });
     return res.data;
   } catch (err) {
     console.error("❌ Register error:", err);

@@ -1,5 +1,38 @@
 {
-  "login": "เข้าสู่ระบบ",
-  "register": "สมัครสมาชิก",
-  "products": "สินค้า"
+  "nav.home": "หน้าแรก",
+  "nav.login": "เข้าสู่ระบบ",
+  "nav.logout": "ออกจากระบบ",
+  "nav.admin": "แผงผู้ดูแล",
+
+  "home.title": "ยินดีต้อนรับสู่ De Dilute",
+  "home.subtitle": "เครื่องดื่มสดชื่น ส่งตรงถึงบ้านคุณ",
+  "home.cta": "สั่งซื้อเลย",
+  "home.products": "สินค้า",
+  "home.loading": "กำลังโหลด...",
+  "home.no_products": "ไม่มีสินค้า",
+  "home.error": "❌ โหลดข้อมูลสินค้าไม่สำเร็จ",
+
+  "login.title": "เข้าสู่ระบบบัญชีของคุณ",
+  "login.email": "อีเมล",
+  "login.password": "รหัสผ่าน",
+  "login.submit": "เข้าสู่ระบบ",
+  "login.no_account": "ยังไม่มีบัญชี?",
+  "login.register": "สมัครสมาชิก",
+  "login.success": "เข้าสู่ระบบสำเร็จ!",
+  "login.error": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+  
+  "register.title": "สร้างบัญชีผู้ใช้",
+  "register.display_name": "ชื่อที่แสดง",
+  "register.success": "สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ",
+  "register.error": "การสมัครสมาชิกไม่สำเร็จ",
+
+  "admin.title": "แดชบอร์ดผู้ดูแล",
+  "admin.add_product": "เพิ่มสินค้า",
+  "admin.edit_product": "แก้ไขสินค้า",
+  "admin.delete_product": "ลบสินค้า",
+
+  "settings.language": "ภาษา",
+  "settings.theme": "ธีม",
+  "settings.theme.light": "สว่าง",
+  "settings.theme.dark": "มืด"
 }
