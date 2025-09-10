@@ -1,16 +1,5 @@
-import {
-  getCurrentUser,
-  logout,
-  checkPermission,
-} from "./api.js";
-
-import {
-  initSettings,
-  getLanguage,
-  setLanguageSetting,
-  setThemeSetting,
-} from "./settings.js";
-
+import { getCurrentUser, logout, checkPermission } from "./api.js";
+import { initSettings, getLanguage, setLanguageSetting, setThemeSetting } from "./settings.js";
 import { setLanguage, applyTranslations } from "./i18n.js";
 
 export default class App {
@@ -26,15 +15,17 @@ export default class App {
       "/admin": "admin",
       "/404": "404",
     };
+
+    this.currentUser = null; // เก็บ user state
   }
 
   async init() {
-    // 1. load settings
+    // 1. โหลด settings
     await initSettings();
     const lang = getLanguage();
     await setLanguage(lang);
 
-    // 2. load navigation + page
+    // 2. โหลด navigation + หน้าแรก
     this.loadNavigation().then(() => {
       this.setupNavigation();
       this.loadPage(window.location.pathname);
@@ -51,11 +42,9 @@ export default class App {
       if (!res.ok) throw new Error("Failed to load navigation");
 
       this.navContainer.innerHTML = await res.text();
-
-      // Apply translations to nav
       applyTranslations(this.navContainer);
 
-      // --- Setup Language & Theme Selectors ---
+      // Language / Theme selectors
       const langSelect = this.navContainer.querySelector("#lang-select");
       if (langSelect) {
         langSelect.value = getLanguage();
@@ -63,52 +52,40 @@ export default class App {
           const newLang = e.target.value;
           await setLanguageSetting(newLang);
           await setLanguage(newLang);
-          applyTranslations(document); // update UI
+          applyTranslations(document);
         });
       }
 
       const themeSelect = this.navContainer.querySelector("#theme-select");
       if (themeSelect) {
         themeSelect.addEventListener("change", async (e) => {
-          const newTheme = e.target.value;
-          await setThemeSetting(newTheme);
+          await setThemeSetting(e.target.value);
         });
       }
 
-      // --- Check login status via /api/auth/me ---
-      try {
-        const me = await getCurrentUser();
-        if (me) {
-          const loginLink = this.navContainer.querySelector('a[href="/login"]');
-          if (loginLink) {
-            loginLink.textContent = "Logout";
-            loginLink.setAttribute("href", "#logout");
-            loginLink.setAttribute("data-logout", "true");
-            loginLink.removeAttribute("data-link");
-          }
+      // --- ตรวจสอบ login ---
+      this.currentUser = await getCurrentUser();
+      if (this.currentUser) {
+        console.info("ℹ️ Logged in as:", this.currentUser.email);
+        const loginLink = this.navContainer.querySelector('a[href="/login"]');
+        if (loginLink) {
+          loginLink.textContent = "Logout";
+          loginLink.setAttribute("href", "#logout");
+          loginLink.setAttribute("data-logout", "true");
+          loginLink.removeAttribute("data-link");
         }
-      } catch {
-        // not logged in → keep Login link
+      } else {
+        console.info("ℹ️ Guest mode: user not logged in");
       }
 
-      // --- Check admin permission ---
-      try {
-        const hasPermission = await checkPermission("ADMIN");
-        if (!hasPermission) {
-          const adminLink = this.navContainer.querySelector('a[href="/admin"]');
-          if (adminLink) adminLink.parentElement.remove();
-        }
-      } catch (err) {
-        if (err.message.includes("Unauthorized")) {
-          const adminLink = this.navContainer.querySelector('a[href="/admin"]');
-          if (adminLink) adminLink.parentElement.remove();
-        } else {
-          console.error("⚠️ Permission check error:", err.message);
-        }
+      // --- ตรวจสอบ admin ---
+      const hasPermission = await checkPermission("ADMIN");
+      if (!hasPermission) {
+        const adminLink = this.navContainer.querySelector('a[href="/admin"]');
+        if (adminLink) adminLink.parentElement.remove();
       }
     } catch (err) {
       console.error("❌ Navigation load error:", err);
-
       this.navContainer.innerHTML = `
         <nav>
           <ul>
@@ -125,10 +102,10 @@ export default class App {
       if (!link) return;
       e.preventDefault();
 
-      // Handle logout
       if (link.dataset.logout) {
         try {
           await logout();
+          this.currentUser = null; // reset user
           this.navigateTo("/login");
         } catch (err) {
           console.error("⚠️ Logout failed:", err.message);
@@ -153,19 +130,16 @@ export default class App {
     const normalized = this.normalizePath(path);
     const pageName = this.routes[normalized];
 
+    // ป้องกันเข้า /admin ถ้าไม่ได้ login หรือไม่มีสิทธิ์
     if (normalized === "/admin") {
-      try {
-        const hasPermission = await checkPermission("ADMIN");
-        if (!hasPermission) {
-          return this.navigateTo("/login");
-        }
-      } catch (err) {
-        console.error("⚠️ Admin permission check failed:", err.message);
+      const hasPermission = await checkPermission("ADMIN");
+      if (!hasPermission) {
+        console.warn("⚠️ Access denied: redirecting to login");
         return this.navigateTo("/login");
       }
     }
 
-    // Hide navbar + footer on /login
+    // ซ่อน nav/footer บน /login
     if (normalized === "/login") {
       this.navContainer.style.display = "none";
       if (this.footer) this.footer.style.display = "none";
@@ -181,7 +155,6 @@ export default class App {
     try {
       const module = await import(`./pages/${pageName}.js`);
       this.initPageModule(module, pageName);
-      // re-apply translation after page render
       applyTranslations(this.mainContent);
     } catch (err) {
       console.error(`❌ Error loading page module "${pageName}":`, err);
