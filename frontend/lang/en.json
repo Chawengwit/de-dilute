@@ -1,5 +1,40 @@
 {
-  "login": "Login",
-  "register": "Register",
-  "products": "Products"
+  "nav.home": "Home",
+  "nav.login": "Login",
+  "nav.logout": "Logout",
+  "nav.admin": "Admin Panel",
+
+  "home.title": "Welcome to De Dilute",
+  "home.subtitle": "Fresh beverages delivered to your doorstep.",
+  "home.cta": "Shop Now",
+  "home.products": "Products",
+  "home.loading": "Loading...",
+  "home.no_products": "No products available.",
+  "home.error": "❌ Failed to load products.",
+
+  "login.title": "Login to your account",
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.submit": "Sign In",
+  "login.no_account": "Don't have an account?",
+  "login.register": "Register",
+  "login.success": "Login successful!",
+  "login.error": "Invalid email or password",
+
+  "register.title": "Create Account",
+  "register.display_name": "Display Name",
+  "register.success": "Registration successful! Please login.",
+  "register.error": "Registration failed",
+
+  "admin.title": "Admin Dashboard",
+  "admin.add_product": "Add Product",
+  "admin.edit_product": "Edit Product",
+  "admin.delete_product": "Delete Product",
+
+  "settings.language": "Language",
+  "settings.theme": "Theme",
+  "settings.theme.light": "Light",
+  "settings.theme.dark": "Dark"
+
+
 }

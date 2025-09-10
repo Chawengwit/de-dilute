@@ -11,6 +11,8 @@ import cookieParser from "cookie-parser";
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import mediaRoutes from './routes/media.js';
+import settingsRoutes from './routes/settings.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +60,8 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/settings', settingsRoutes);
+
 
 // Health check
 app.get('/api/health', async (req, res) => {

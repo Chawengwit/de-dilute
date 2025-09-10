@@ -1,25 +1,26 @@
 import { openModal, closeModal, initModal, showNotification } from "../utils.js";
 import { login, register } from "../api.js";
+import { applyTranslations } from "../i18n.js";
 
 export function init(container) {
   container.innerHTML = `
     <div class="login-container">
       <div class="login-box">
-        <h2>Login</h2>
+        <h2 data-i18n="login.title">Login</h2>
         <form id="login-form">
           <div class="input-group">
-            <label for="email">Email</label>
+            <label for="email" data-i18n="login.email">Email</label>
             <input type="email" id="email" name="email" required>
           </div>
 
           <div class="input-group">
-            <label for="password">Password</label>
+            <label for="password" data-i18n="login.password">Password</label>
             <input type="password" id="password" name="password" required>
           </div>
 
           <div class="button-group">
-            <button type="submit" class="btn btn-primary">Login</button>
-            <button type="button" id="open-register-modal" class="btn btn-secondary">Register</button>
+            <button type="submit" class="btn btn-primary" data-i18n="login.submit">Login</button>
+            <button type="button" id="open-register-modal" class="btn btn-secondary" data-i18n="login.register">Register</button>
           </div>
         </form>
       </div>
@@ -29,25 +30,25 @@ export function init(container) {
     <div id="register-modal" class="modal">
       <div class="modal-content">
         <span class="close-button">&times;</span>
-        <h2>Create Account</h2>
+        <h2 data-i18n="register.title">Create Account</h2>
         <form id="register-form">
           <div class="input-group">
-            <label for="register-email">Email</label>
+            <label for="register-email" data-i18n="login.email">Email</label>
             <input type="email" id="register-email" name="email" required>
           </div>
 
           <div class="input-group">
-            <label for="register-password">Password</label>
+            <label for="register-password" data-i18n="login.password">Password</label>
             <input type="password" id="register-password" name="password" required>
           </div>
 
           <div class="input-group">
-            <label for="register-display-name">Display Name</label>
+            <label for="register-display-name" data-i18n="register.display_name">Display Name</label>
             <input type="text" id="register-display-name" name="display_name" required>
           </div>
 
           <div class="button-group">
-            <button type="submit" class="btn btn-primary">Register</button>
+            <button type="submit" class="btn btn-primary" data-i18n="login.register">Register</button>
           </div>
         </form>
       </div>
@@ -73,11 +74,11 @@ export function init(container) {
 
     try {
       await login(email, password);
-      showNotification("Login success!", "success");
+      showNotification("login.success", "success"); // i18n key
       window.location.href = "/"; // redirect SPA route
     } catch (err) {
       console.error("Login Error:", err);
-      showNotification("Invalid email or password", "error");
+      showNotification("login.error", "error"); // i18n key
     }
   });
 
@@ -90,12 +91,15 @@ export function init(container) {
 
     try {
       await register(email, password, display_name);
-      showNotification("Registration successful! Please login.", "success");
+      showNotification("register.success", "success"); // i18n key
       closeModal("register-modal");
       registerForm.reset();
     } catch (err) {
       console.error("Register Error:", err);
-      showNotification("Registration failed", "error");
+      showNotification("register.error", "error"); // i18n key
     }
   });
+
+  // Apply translations
+  applyTranslations(container);
 }
