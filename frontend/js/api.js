@@ -22,10 +22,12 @@ export async function getProducts(limit = 10, offset = 0) {
 }
 
 /* -------------------- Settings -------------------- */
-export async function getSettings() {
+export async function getSettings(lang = "en") {
   try {
-    const res = await api.get("/settings");
-    return res.data;
+    const res = await api.get("/settings", {
+      params: { lang },
+    });
+    return res.data; // { key1: {value, type, lang}, key2: {...} }
   } catch (err) {
     console.error("❌ Error fetching settings:", err);
     throw new Error("Failed to load settings");
@@ -34,11 +36,12 @@ export async function getSettings() {
 
 export async function saveSettings(settings) {
   try {
-    const res = await api.post("/settings", settings);
-    return res.data;
+    // settings = [ { key, value, type?, lang? }, ... ]
+    const res = await api.post("/settings", { settings });
+    return res.data; // { message, settings: [...] }
   } catch (err) {
     console.error("❌ Error saving settings:", err);
-    throw new Error("Failed to save settings");
+    throw new Error(err.response?.data?.error || "Failed to save settings");
   }
 }
 

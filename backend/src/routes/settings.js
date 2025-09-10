@@ -4,44 +4,68 @@ import { authenticate } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.get("/", authenticate, async (req, res) => {
+/**
+ * @route GET /api/settings
+ * @desc Public - get settings by lang
+ * @query lang=th|en
+ */
+router.get("/", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const lang = req.query.lang || "en";
 
     const result = await db.query(
-      "SELECT lang, theme FROM user_settings WHERE user_id = $1",
-      [userId]
+      "SELECT key, value, type, lang FROM settings WHERE lang = $1 ORDER BY key",
+      [lang]
     );
 
-    if (result.rows.length === 0) {
-      // return default settings
-      return res.json({ lang: "en", theme: "light" });
-    }
+    // แปลงเป็น object: { key1: value1, key2: value2 }
+    const settingsObj = {};
+    result.rows.forEach((row) => {
+      settingsObj[row.key] = {
+        value: row.value,
+        type: row.type,
+        lang: row.lang,
+      };
+    });
 
-    res.json(result.rows[0]);
+    res.json(settingsObj);
   } catch (err) {
     console.error("❌ Error fetching settings:", err);
     res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
 
+/**
+ * @route POST /api/settings
+ * @desc Private (admin) - upsert settings
+ * @body [{ key, value, type, lang }]
+ */
 router.post("/", authenticate, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { lang, theme } = req.body;
+    const { settings } = req.body;
+    if (!Array.isArray(settings)) {
+      return res.status(400).json({ error: "Invalid request format" });
+    }
 
-    const result = await db.query(
-      `INSERT INTO user_settings (user_id, lang, theme)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id)
-       DO UPDATE SET lang = EXCLUDED.lang,
-                     theme = EXCLUDED.theme,
-                     updated_at = now()
-       RETURNING lang, theme`,
-      [userId, lang || "en", theme || "light"]
-    );
+    const updated = [];
+    for (const s of settings) {
+      const { key, value, type = "text", lang = "en" } = s;
+      if (!key) continue;
 
-    res.json(result.rows[0]);
+      const result = await db.query(
+        `INSERT INTO settings (key, value, type, lang)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (key, lang)
+         DO UPDATE SET value = EXCLUDED.value,
+                       type = EXCLUDED.type,
+                       updated_at = now()
+         RETURNING id, key, value, type, lang`,
+        [key, value, type, lang]
+      );
+      updated.push(result.rows[0]);
+    }
+
+    res.json({ message: "Settings updated successfully", settings: updated });
   } catch (err) {
     console.error("❌ Error saving settings:", err);
     res.status(500).json({ error: "Failed to save settings" });
