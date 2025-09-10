@@ -7,36 +7,36 @@ let settings = {
 
 /* -------------------- Local Fallback -------------------- */
 function setLocalSetting(key, value) {
-  localStorage.setItem(`app_${key}`, value);
+  localStorage.setItem(key, value);
 }
 
 function getLocalSetting(key, defaultValue) {
-  return localStorage.getItem(`app_${key}`) || defaultValue;
+  return localStorage.getItem(key) || defaultValue;
 }
 
 /* -------------------- Init Settings -------------------- */
 export async function initSettings() {
+  // preload localStorage ก่อน
+  settings.lang = getLocalSetting("language", settings.lang);
+  settings.theme = getLocalSetting("theme", settings.theme);
+
   try {
     const res = await apiGetSettings();
     if (res) {
+      // ถ้ามีค่าใน API override localStorage
       settings = { ...settings, ...res };
-    } else {
-      // fallback localStorage
-      settings.lang = getLocalSetting("language", settings.lang);
-      settings.theme = getLocalSetting("theme", settings.theme);
     }
   } catch (err) {
-    console.warn("⚠️ Failed to init settings, fallback to localStorage");
-    settings.lang = getLocalSetting("language", settings.lang);
-    settings.theme = getLocalSetting("theme", settings.theme);
+    console.warn("⚠️ Failed to load API settings, using localStorage only");
   }
 
-  // apply theme to <html>
+  // apply theme
   document.documentElement.setAttribute("data-theme", settings.theme);
 }
 
 /* -------------------- Language -------------------- */
 export function getLanguage() {
+  // return จาก settings (sync แล้วกับ localStorage)
   return settings.lang || "en";
 }
 
@@ -47,14 +47,15 @@ export async function setLanguageSetting(lang) {
   if (user) {
     try {
       await saveSettings(settings);
-      return;
     } catch (err) {
-      console.error("❌ Failed to save language setting, fallback to localStorage");
+      console.error("❌ Failed to save language, fallback to localStorage");
+      setLocalSetting("language", lang);
     }
+  } else {
+    setLocalSetting("language", lang);
   }
 
-  // fallback guest
-  setLocalSetting("language", lang);
+  window.location.reload();
 }
 
 /* -------------------- Theme -------------------- */
@@ -64,18 +65,19 @@ export function getTheme() {
 
 export async function setThemeSetting(theme) {
   settings.theme = theme;
-  document.documentElement.setAttribute("data-theme", theme); // apply ทันที
+  document.documentElement.setAttribute("data-theme", theme);
 
   const user = await getCurrentUser();
   if (user) {
     try {
       await saveSettings(settings);
-      return;
     } catch (err) {
-      console.error("❌ Failed to save theme setting, fallback to localStorage");
+      console.error("❌ Failed to save theme, fallback to localStorage");
+      setLocalSetting("theme", theme);
     }
+  } else {
+    setLocalSetting("theme", theme);
   }
 
-  // fallback guest
-  setLocalSetting("theme", theme);
+  window.location.reload();
 }

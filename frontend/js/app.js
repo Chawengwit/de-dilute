@@ -1,5 +1,5 @@
 import { getCurrentUser, logout, checkPermission } from "./api.js";
-import { initSettings, getLanguage, setLanguageSetting, setThemeSetting } from "./settings.js";
+import { initSettings, getLanguage, setLanguageSetting, setThemeSetting, getTheme } from "./settings.js";
 import { setLanguage, applyTranslations } from "./i18n.js";
 
 export default class App {
@@ -20,12 +20,33 @@ export default class App {
   }
 
   async init() {
-    // 1. โหลด settings
-    await initSettings();
-    const lang = getLanguage();
-    await setLanguage(lang);
+    /* -------------------- Preload จาก localStorage -------------------- */
+    const preloadLang = localStorage.getItem("language") || "en";
+    const preloadTheme = localStorage.getItem("theme") || "light";
 
-    // 2. โหลด navigation + หน้าแรก
+    console.log("preloadLang", preloadLang)
+    console.log("preloadTheme", preloadTheme)
+
+    // Apply theme ก่อน DOM render (กัน flash)
+    document.documentElement.setAttribute("data-theme", preloadTheme);
+
+    // Apply language preload
+    await setLanguage(preloadLang);
+
+    /* -------------------- Load API Settings -------------------- */
+    await initSettings(); // sync ค่า settings จาก API หรือ localStorage
+    const lang = getLanguage();
+    const theme = getTheme();
+
+    console.log("==================")
+    console.log("lang", lang)
+    console.log("theme", theme)
+
+    // Apply ใหม่ตาม settings
+    await setLanguage(lang);
+    document.documentElement.setAttribute("data-theme", theme);
+
+    /* -------------------- Navigation + Page -------------------- */
     this.loadNavigation().then(() => {
       this.setupNavigation();
       this.loadPage(window.location.pathname);
@@ -44,22 +65,21 @@ export default class App {
       this.navContainer.innerHTML = await res.text();
       applyTranslations(this.navContainer);
 
-      // Language / Theme selectors
+      // Language selector
       const langSelect = this.navContainer.querySelector("#lang-select");
       if (langSelect) {
-        langSelect.value = getLanguage();
+        langSelect.value = getLanguage(); // อ่านค่าที่ sync แล้ว
         langSelect.addEventListener("change", async (e) => {
-          const newLang = e.target.value;
-          await setLanguageSetting(newLang);
-          await setLanguage(newLang);
-          applyTranslations(document);
+          await setLanguageSetting(e.target.value); // reload page
         });
       }
 
+      // Theme selector
       const themeSelect = this.navContainer.querySelector("#theme-select");
       if (themeSelect) {
+        themeSelect.value = getTheme(); // อ่านค่าที่ sync แล้ว
         themeSelect.addEventListener("change", async (e) => {
-          await setThemeSetting(e.target.value);
+          await setThemeSetting(e.target.value); // reload page
         });
       }
 
