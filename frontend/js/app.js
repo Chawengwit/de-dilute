@@ -24,9 +24,6 @@ export default class App {
     const preloadLang = localStorage.getItem("language") || "en";
     const preloadTheme = localStorage.getItem("theme") || "light";
 
-    console.log("preloadLang", preloadLang)
-    console.log("preloadTheme", preloadTheme)
-
     // Apply theme ก่อน DOM render (กัน flash)
     document.documentElement.setAttribute("data-theme", preloadTheme);
 
@@ -37,10 +34,6 @@ export default class App {
     await initSettings(); // sync ค่า settings จาก API หรือ localStorage
     const lang = getLanguage();
     const theme = getTheme();
-
-    console.log("==================")
-    console.log("lang", lang)
-    console.log("theme", theme)
 
     // Apply ใหม่ตาม settings
     await setLanguage(lang);
@@ -71,6 +64,7 @@ export default class App {
         langSelect.value = getLanguage(); // อ่านค่าที่ sync แล้ว
         langSelect.addEventListener("change", async (e) => {
           await setLanguageSetting(e.target.value); // reload page
+          this.loadPage(window.location.pathname); // reload content
         });
       }
 
@@ -80,6 +74,7 @@ export default class App {
         themeSelect.value = getTheme(); // อ่านค่าที่ sync แล้ว
         themeSelect.addEventListener("change", async (e) => {
           await setThemeSetting(e.target.value); // reload page
+          this.loadPage(window.location.pathname); // reload content
         });
       }
 

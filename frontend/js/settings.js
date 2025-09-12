@@ -1,4 +1,5 @@
 import { getSettings as apiGetSettings, saveSettings, getCurrentUser } from "./api.js";
+import { setLanguage, applyTranslations } from "./i18n.js";
 
 let settings = {
   lang: "en",
@@ -16,27 +17,25 @@ function getLocalSetting(key, defaultValue) {
 
 /* -------------------- Init Settings -------------------- */
 export async function initSettings() {
-  // preload localStorage ก่อน
   settings.lang = getLocalSetting("language", settings.lang);
   settings.theme = getLocalSetting("theme", settings.theme);
 
   try {
     const res = await apiGetSettings();
     if (res) {
-      // ถ้ามีค่าใน API override localStorage
       settings = { ...settings, ...res };
     }
   } catch (err) {
     console.warn("⚠️ Failed to load API settings, using localStorage only");
   }
 
-  // apply theme
+  // apply theme + lang
   document.documentElement.setAttribute("data-theme", settings.theme);
+  await setLanguage(settings.lang);
 }
 
 /* -------------------- Language -------------------- */
 export function getLanguage() {
-  // return จาก settings (sync แล้วกับ localStorage)
   return settings.lang || "en";
 }
 
@@ -55,7 +54,9 @@ export async function setLanguageSetting(lang) {
     setLocalSetting("language", lang);
   }
 
-  window.location.reload();
+  // เปลี่ยนภาษาแบบ dynamic ไม่ reload
+  await setLanguage(lang);
+  applyTranslations(document);
 }
 
 /* -------------------- Theme -------------------- */
@@ -79,5 +80,6 @@ export async function setThemeSetting(theme) {
     setLocalSetting("theme", theme);
   }
 
-  window.location.reload();
+  // ไม่ reload แค่ apply
+  document.documentElement.setAttribute("data-theme", theme);
 }
