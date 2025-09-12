@@ -9,10 +9,23 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Init schema.sql (executed on first container start)
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:  # Redis Service
+    image: redis:7-alpine
+    container_name: dedilute_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,10 +36,14 @@ services:
     restart: always
     env_file:
       - .env.development
+    environment:   # เพิ่มค่าให้ backend รู้จัก Redis
+      - REDIS_URL=redis://redis:6379
     ports:
       - "${BACKEND_PORT}:3000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
@@ -49,3 +66,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:   # volume สำหรับ Redis
