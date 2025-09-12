@@ -1,19 +1,6 @@
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
-import Redis from "ioredis";
-
-/* -------------------------------------------------- */
-/* Redis Store Config (optional)                      */
-/* -------------------------------------------------- */
-let storeOptions = {};
-if (process.env.REDIS_URL) {
-  const redisClient = new Redis(process.env.REDIS_URL);
-  storeOptions = {
-    store: new RedisStore({
-      sendCommand: (...args) => redisClient.call(...args),
-    }),
-  };
-}
+import redisClient from "../config/redis.js";
 
 /* -------------------------------------------------- */
 /* Logging Helper                                     */
@@ -25,7 +12,7 @@ function logRateLimit(req, route) {
 /* -------------------------------------------------- */
 /* Factory Function                                   */
 /* -------------------------------------------------- */
-function createLimiter({ route, windowMinutes, maxRequests, message }) {
+function createLimiter({ route, windowMinutes, maxRequests, message, prefix }) {
   return rateLimit({
     windowMs: windowMinutes * 60 * 1000,
     max: maxRequests,
@@ -34,7 +21,12 @@ function createLimiter({ route, windowMinutes, maxRequests, message }) {
       res.status(options.statusCode).json(options.message);
     },
     message: { error: message },
-    ...storeOptions,
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: new RedisStore({
+      sendCommand: (...args) => redisClient.sendCommand(args),
+      prefix, // ✅ ให้แต่ละ limiter มี prefix แยกกัน
+    }),
   });
 }
 
@@ -50,6 +42,7 @@ export const apiLimiter = (req, res, next) => {
     windowMinutes: parseInt(process.env.RATE_LIMIT_GLOBAL_WINDOW || "15", 10),
     maxRequests: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || "100", 10),
     message: "Too many requests, please try again later.",
+    prefix: "rl:global:", // ✅ unique prefix
   })(req, res, next);
 };
 
@@ -59,6 +52,7 @@ export const loginLimiter = createLimiter({
   windowMinutes: parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW || "1", 10),
   maxRequests: parseInt(process.env.RATE_LIMIT_LOGIN_MAX || "5", 10),
   message: "Too many login attempts. Try again in 1 minute.",
+  prefix: "rl:login:", // ✅ unique prefix
 });
 
 // Register limiter
@@ -67,4 +61,5 @@ export const registerLimiter = createLimiter({
   windowMinutes: parseInt(process.env.RATE_LIMIT_REGISTER_WINDOW || "60", 10),
   maxRequests: parseInt(process.env.RATE_LIMIT_REGISTER_MAX || "10", 10),
   message: "Too many register attempts. Try again later.",
+  prefix: "rl:register:", // ✅ unique prefix
 });

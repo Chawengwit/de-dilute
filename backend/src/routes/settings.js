@@ -1,6 +1,7 @@
 import express from "express";
 import db from "../db.js";
 import { authenticate } from "../middleware/auth.js";
+import { cache, invalidateCache } from "../middleware/cache.js";
 
 const router = express.Router();
 
@@ -9,7 +10,7 @@ const router = express.Router();
  * @desc Public - get settings by lang
  * @query lang=th|en
  */
-router.get("/", async (req, res) => {
+router.get("/", cache("settings:", 300), async (req, res) => {
   try {
     const lang = req.query.lang || "en";
 
@@ -18,7 +19,7 @@ router.get("/", async (req, res) => {
       [lang]
     );
 
-    // แปลงเป็น object: { key1: value1, key2: value2 }
+    // แปลงเป็น object: { key1: { value, type, lang } }
     const settingsObj = {};
     result.rows.forEach((row) => {
       settingsObj[row.key] = {
@@ -64,6 +65,9 @@ router.post("/", authenticate, async (req, res) => {
       );
       updated.push(result.rows[0]);
     }
+
+    // 🗑️ ลบ cache เก่าออก หลังจากแก้ไขเสร็จ
+    await invalidateCache("settings:");
 
     res.json({ message: "Settings updated successfully", settings: updated });
   } catch (err) {
