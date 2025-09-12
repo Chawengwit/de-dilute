@@ -4,8 +4,8 @@ import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
 import dotenv from "dotenv";
-import pool from "./db.js";
 import cookieParser from "cookie-parser";
+import pool from "./db.js";
 
 // Import API routes
 import authRoutes from "./routes/auth.js";
@@ -25,7 +25,10 @@ dotenv.config();
 
 const app = express();
 
-// ---------------- Middleware ---------------- //
+/* -------------------------------------------------- */
+/* Middleware                                         */
+/* -------------------------------------------------- */
+
 // CORS
 const corsOptions =
   process.env.NODE_ENV === "production"
@@ -44,28 +47,29 @@ const corsOptions =
 
 app.use(cors(corsOptions));
 
-// Parse JSON & form data
+// Body parsers & cookies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Security & performance
-app.use(helmet()); // secure HTTP headers
-app.use(compression()); // gzip/deflate responses
+app.use(helmet());
+app.use(compression());
 
 // Logging
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(morgan("combined"));
-}
+app.use(
+  morgan(process.env.NODE_ENV === "development" ? "dev" : "combined")
+);
 
-// ---------------- Security: Rate Limiting ---------------- //
-// Global limiter
+/* -------------------------------------------------- */
+/* Security: Rate Limiting                            */
+/* -------------------------------------------------- */
 app.use("/api/", apiLimiter);
 
-// ---------------- Routes ---------------- //
-// Auth routes (เฉพาะ login/register ใส่ limiter แยก)
+/* -------------------------------------------------- */
+/* Routes                                             */
+/* -------------------------------------------------- */
+// Auth routes (login/register ใช้ limiter แยก)
 app.use("/api/auth/login", loginLimiter, authRoutes);
 app.use("/api/auth/register", registerLimiter, authRoutes);
 
@@ -98,7 +102,9 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// ---------------- Error Handling ---------------- //
+/* -------------------------------------------------- */
+/* Error Handling                                     */
+/* -------------------------------------------------- */
 // Favicon request handler
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 
@@ -108,7 +114,7 @@ app.use((req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ error: "Internal Server Error" });
 });

@@ -2,9 +2,10 @@ import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import Redis from "ioredis";
 
+/* -------------------------------------------------- */
+/* Redis Store Config (optional)                      */
+/* -------------------------------------------------- */
 let storeOptions = {};
-
-// ถ้ามี REDIS_URL → ใช้ RedisStore
 if (process.env.REDIS_URL) {
   const redisClient = new Redis(process.env.REDIS_URL);
   storeOptions = {
@@ -14,43 +15,56 @@ if (process.env.REDIS_URL) {
   };
 }
 
-// ฟังก์ชัน log เวลาโดน block
+/* -------------------------------------------------- */
+/* Logging Helper                                     */
+/* -------------------------------------------------- */
 function logRateLimit(req, route) {
   console.warn(`🚨 Rate limit exceeded: IP=${req.ip} Route=${route}`);
 }
 
-// Global limiter (ทุก /api/*)
-export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 นาที
-  max: 100, // 100 requests ต่อ 15 นาที
-  handler: (req, res, next, options) => {
-    logRateLimit(req, "GLOBAL");
-    res.status(options.statusCode).json(options.message);
-  },
-  message: { error: "Too many requests, please try again later." },
-  ...storeOptions,
-});
+/* -------------------------------------------------- */
+/* Factory Function                                   */
+/* -------------------------------------------------- */
+function createLimiter({ route, windowMinutes, maxRequests, message }) {
+  return rateLimit({
+    windowMs: windowMinutes * 60 * 1000,
+    max: maxRequests,
+    handler: (req, res, _next, options) => {
+      logRateLimit(req, route);
+      res.status(options.statusCode).json(options.message);
+    },
+    message: { error: message },
+    ...storeOptions,
+  });
+}
+
+/* -------------------------------------------------- */
+/* Limiters                                           */
+/* -------------------------------------------------- */
+
+// Global limiter (ทุก /api/* ยกเว้น /api/health)
+export const apiLimiter = (req, res, next) => {
+  if (req.path === "/health") return next();
+  return createLimiter({
+    route: "GLOBAL",
+    windowMinutes: parseInt(process.env.RATE_LIMIT_GLOBAL_WINDOW || "15", 10),
+    maxRequests: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || "100", 10),
+    message: "Too many requests, please try again later.",
+  })(req, res, next);
+};
 
 // Login limiter
-export const loginLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 นาที
-  max: 5, // 5 ครั้ง/นาที
-  handler: (req, res, next, options) => {
-    logRateLimit(req, "LOGIN");
-    res.status(options.statusCode).json(options.message);
-  },
-  message: { error: "Too many login attempts. Try again in 1 minute." },
-  ...storeOptions,
+export const loginLimiter = createLimiter({
+  route: "LOGIN",
+  windowMinutes: parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW || "1", 10),
+  maxRequests: parseInt(process.env.RATE_LIMIT_LOGIN_MAX || "5", 10),
+  message: "Too many login attempts. Try again in 1 minute.",
 });
 
 // Register limiter
-export const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 ชั่วโมง
-  max: 10, // 10 ครั้ง/ชม.
-  handler: (req, res, next, options) => {
-    logRateLimit(req, "REGISTER");
-    res.status(options.statusCode).json(options.message);
-  },
-  message: { error: "Too many register attempts. Try again later." },
-  ...storeOptions,
+export const registerLimiter = createLimiter({
+  route: "REGISTER",
+  windowMinutes: parseInt(process.env.RATE_LIMIT_REGISTER_WINDOW || "60", 10),
+  maxRequests: parseInt(process.env.RATE_LIMIT_REGISTER_MAX || "10", 10),
+  message: "Too many register attempts. Try again later.",
 });
