@@ -15,8 +15,8 @@ body {
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
   line-height: 1.6;
-  color: var(--color-gray-700);
-  background-color: var(--color-gray-50);
+  color: var(--color-text);
+  background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -24,4 +24,24 @@ body {
 .main-content {
   min-height: calc(100vh - 64px);
   padding: var(--spacing-xl) 0;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+
+  &:hover,
+  &:focus {
+    color: var(--color-link-hover);
+    text-decoration: underline;
+  }
+
+  &:visited {
+    color: var(--color-link);
+  }
+
+  &:active {
+    color: var(--color-primary);
+  }
 }
