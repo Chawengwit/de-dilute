@@ -6,6 +6,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import pool from "./db.js";
+import redisClient from "./config/redis.js";
 
 // Import API routes
 import authRoutes from "./routes/auth.js";
@@ -69,11 +70,9 @@ app.use("/api/", apiLimiter);
 /* -------------------------------------------------- */
 /* Routes                                             */
 /* -------------------------------------------------- */
-// Auth routes (login/register ใช้ limiter แยก)
 app.use("/api/auth/login", loginLimiter, authRoutes);
 app.use("/api/auth/register", registerLimiter, authRoutes);
 
-// Other routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/media", mediaRoutes);
@@ -83,11 +82,14 @@ app.use("/api/settings", settingsRoutes);
 app.get("/api/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
+    const redisStatus = redisClient.isOpen ? "connected" : "disconnected";
+
     res.status(200).json({
       status: "OK",
       env: process.env.NODE_ENV,
       uptime: process.uptime(),
       db: "connected",
+      redis: redisStatus,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
@@ -96,6 +98,7 @@ app.get("/api/health", async (req, res) => {
       env: process.env.NODE_ENV,
       uptime: process.uptime(),
       db: "disconnected",
+      redis: redisClient.isOpen ? "connected" : "disconnected",
       error: err.message,
       timestamp: new Date().toISOString(),
     });

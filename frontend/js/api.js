@@ -1,7 +1,7 @@
 // frontend/js/api.js
 import axios from "./vendor/axios.esm.js";
 
-// สร้าง instance สำหรับเรียก Backend API
+// -------------------- Axios Instance --------------------
 const api = axios.create({
   baseURL: "/api",
   headers: { "Content-Type": "application/json" },
@@ -9,12 +9,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
-/* -------------------- Interceptor -------------------- */
+// -------------------- Interceptor --------------------
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 🚫 suppress error log — ไม่โยน error ต่อ
       const url = error.config.url;
       if (url.includes("/auth/me")) {
         console.info("ℹ️ Guest mode: no user session");
@@ -28,41 +27,56 @@ api.interceptors.response.use(
         console.info("ℹ️ Guest mode: settings not saved");
         return Promise.resolve({ data: null });
       }
-
-      // default fallback
       return Promise.resolve({ data: null });
     }
-
-    // error อื่น ๆ → ส่งต่อไปให้ catch
     return Promise.reject(error);
   }
 );
 
-/* -------------------- Products (Public) -------------------- */
-export async function getProducts(limit = 10, offset = 0) {
+// -------------------- Local Cache Helper --------------------
+async function fetchWithLocalCache(key, fetchFn, ttl = 300000) { // default 5 นาที
   try {
-    const res = await api.get("/products/public", { params: { limit, offset } });
-    return res.data;
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < ttl) {
+        console.info(`✅ Local cache hit: ${key}`);
+        return data;
+      }
+    }
+
+    const data = await fetchFn();
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    return data;
   } catch (err) {
-    console.error("❌ Error fetching products:", err);
-    throw new Error("Failed to load products");
+    console.warn(`⚠️ Local cache disabled for ${key}:`, err);
+    return fetchFn();
   }
 }
 
-/* -------------------- Settings -------------------- */
+// -------------------- Products (Public) --------------------
+export async function getProducts(limit = 10, offset = 0) {
+  return fetchWithLocalCache(`products:${limit}:${offset}`, async () => {
+    const res = await api.get("/products/public", { params: { limit, offset } });
+    return res.data;
+  });
+}
+
+// -------------------- Settings --------------------
 export async function getSettings(lang = "en") {
-  try {
+  return fetchWithLocalCache(`settings:${lang}`, async () => {
     const res = await api.get("/settings", { params: { lang } });
     return res.data;
-  } catch (err) {
-    console.error("❌ Error fetching settings:", err);
-    throw new Error("Failed to load settings");
-  }
+  });
 }
 
 export async function saveSettings(settings) {
   try {
     const res = await api.post("/settings", { settings });
+    // 🗑️ invalidate local cache
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith("settings:"))
+      .forEach((key) => localStorage.removeItem(key));
     return res.data;
   } catch (err) {
     console.error("❌ Error saving settings:", err);
@@ -70,7 +84,7 @@ export async function saveSettings(settings) {
   }
 }
 
-/* -------------------- Auth -------------------- */
+// -------------------- Auth --------------------
 export async function register(email, password, display_name) {
   try {
     const res = await api.post("/auth/register", { email, password, display_name });
@@ -101,7 +115,7 @@ export async function logout() {
   }
 }
 
-/* -------------------- Protected API -------------------- */
+// -------------------- Protected API --------------------
 export async function getCurrentUser() {
   const res = await api.get("/auth/me");
   return res.data.user; // Interceptor จะจัดการ 401 → { user: null }
@@ -111,3 +125,24 @@ export async function checkPermission(permission) {
   const res = await api.post("/auth/permissions", { permission });
   return res.data.hasPermission; // Interceptor จะจัดการ 401 → false
 }
+
+// -------------------- Local Cache Cleanup (Auto Expire) --------------------
+function cleanupLocalCache(ttl = 300000) { // default 5 นาที
+  const now = Date.now();
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith("products:") || key.startsWith("settings:")) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(key));
+        if (!cached?.timestamp || now - cached.timestamp > ttl) {
+          localStorage.removeItem(key);
+          console.info(`🗑️ Local cache expired & removed: ${key}`);
+        }
+      } catch {
+        localStorage.removeItem(key); // ถ้า parse error → clear ไปเลย
+      }
+    }
+  });
+}
+
+// schedule cleanup ทุก 1 นาที
+setInterval(() => cleanupLocalCache(300000), 60 * 1000);
