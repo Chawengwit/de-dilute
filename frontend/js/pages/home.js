@@ -22,12 +22,19 @@ export function init(container) {
       productList.innerHTML = products
         .map(
           (p) => `
-          <div class="product-card">
-            <h3>${p.name}</h3>
-            <p>${p.description || ""}</p>
-            <p><strong>$${Number(p.price).toFixed(2)}</strong></p>
-          </div>
-        `
+            <div class="product-card">
+              <div class="product-image">
+                <img src="${p.media?.[0]?.url || "/media/placeholder.png"}" 
+                    alt="${p.name}" />
+              </div>
+              <div class="product-content">
+                <h3 class="product-title">${p.name}</h3>
+                <p class="product-desc">${p.description || ""}</p>
+                <p class="product-price"><strong>$${Number(p.price).toFixed(2)}</strong></p>
+                <button class="btn-add" data-id="${p.id}">Add to Cart</button>
+              </div>
+            </div>
+          `
         )
         .join("");
     })
