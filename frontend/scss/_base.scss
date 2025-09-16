@@ -45,3 +45,14 @@ a {
     color: var(--color-primary);
   }
 }
+
+footer {
+  position: fixed;
+  bottom: 0;
+  align-items: center;
+  width: 100%;
+  p {
+    width: fit-content;
+    margin: 0 auto;
+  }
+}
