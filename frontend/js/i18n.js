@@ -39,6 +39,13 @@ export function applyTranslations(root = document) {
 }
 
 /**
+ * ดึงข้อความจาก translations ตาม key
+ */
+export function t(key) {
+  return translations[key] || key;
+}
+
+/**
  * ดึงภาษาใช้งานปัจจุบัน
  */
 export function getCurrentLanguage() {
