@@ -1,6 +1,6 @@
 import { getCurrentUser, logout, checkPermission } from "./api.js";
 import { initSettings, getLanguage, setLanguageSetting, setThemeSetting, getTheme } from "./settings.js";
-import { setLanguage, applyTranslations } from "./i18n.js";
+import { setLanguage, applyTranslations, t } from "./i18n.js";
 
 export default class App {
   constructor() {
@@ -24,20 +24,29 @@ export default class App {
     const preloadLang = localStorage.getItem("language") || "en";
     const preloadTheme = localStorage.getItem("theme") || "light";
 
-    // Apply theme ก่อน DOM render (กัน flash)
     document.documentElement.setAttribute("data-theme", preloadTheme);
-
-    // Apply language preload
     await setLanguage(preloadLang);
 
     /* -------------------- Load API Settings -------------------- */
-    await initSettings(); // sync ค่า settings จาก API หรือ localStorage
+    await initSettings();
     const lang = getLanguage();
     const theme = getTheme();
 
-    // Apply ใหม่ตาม settings
     await setLanguage(lang);
     document.documentElement.setAttribute("data-theme", theme);
+
+    /* -------------------- โหลด user state -------------------- */
+    try {
+      this.currentUser = await getCurrentUser();
+      if (this.currentUser) {
+        console.info("ℹ️ Logged in as:", this.currentUser.email);
+      } else {
+        console.info("ℹ️ Guest mode: user not logged in");
+      }
+    } catch (err) {
+      console.warn("⚠️ Could not fetch current user:", err.message);
+      this.currentUser = null;
+    }
 
     /* -------------------- Navigation + Page -------------------- */
     this.loadNavigation().then(() => {
@@ -61,33 +70,34 @@ export default class App {
       // Language selector
       const langSelect = this.navContainer.querySelector("#lang-select");
       if (langSelect) {
-        langSelect.value = getLanguage(); // อ่านค่าที่ sync แล้ว
+        langSelect.value = getLanguage();
         langSelect.addEventListener("change", async (e) => {
-          await setLanguageSetting(e.target.value); // reload page
-          this.loadPage(window.location.pathname); // reload content
+          await setLanguageSetting(e.target.value);
+          this.loadPage(window.location.pathname);
         });
       }
 
       // Theme selector
       const themeSelect = this.navContainer.querySelector("#theme-select");
       if (themeSelect) {
-        themeSelect.value = getTheme(); // อ่านค่าที่ sync แล้ว
+        themeSelect.value = getTheme();
         themeSelect.addEventListener("change", async (e) => {
-          await setThemeSetting(e.target.value); // reload page
-          this.loadPage(window.location.pathname); // reload content
+          await setThemeSetting(e.target.value);
+          this.loadPage(window.location.pathname);
         });
       }
 
       // --- ตรวจสอบ login ---
-      this.currentUser = await getCurrentUser();
       if (this.currentUser) {
-        console.info("ℹ️ Logged in as:", this.currentUser.email);
         const loginLink = this.navContainer.querySelector('a[href="/login"]');
         if (loginLink) {
-          loginLink.textContent = "Logout";
           loginLink.setAttribute("href", "#logout");
           loginLink.setAttribute("data-logout", "true");
           loginLink.removeAttribute("data-link");
+          loginLink.setAttribute("data-i18n", "nav.logout");
+
+          // ใช้ t() เพื่อให้แน่ใจว่าได้ข้อความแปลที่ถูกต้อง
+          loginLink.textContent = t("nav.logout");
         }
       } else {
         console.info("ℹ️ Guest mode: user not logged in");
@@ -120,7 +130,14 @@ export default class App {
       if (link.dataset.logout) {
         try {
           await logout();
-          this.currentUser = null; // reset user
+          this.currentUser = null;
+          // รีเซ็ตกลับไป login text ตามภาษา
+          link.setAttribute("href", "/login");
+          link.setAttribute("data-link", "true");
+          link.removeAttribute("data-logout");
+          link.setAttribute("data-i18n", "nav.login");
+          link.textContent = t("nav.login");
+
           this.navigateTo("/login");
         } catch (err) {
           console.error("⚠️ Logout failed:", err.message);
@@ -145,7 +162,6 @@ export default class App {
     const normalized = this.normalizePath(path);
     const pageName = this.routes[normalized];
 
-    // ป้องกันเข้า /admin ถ้าไม่ได้ login หรือไม่มีสิทธิ์
     if (normalized === "/admin") {
       const hasPermission = await checkPermission("ADMIN");
       if (!hasPermission) {
@@ -154,7 +170,6 @@ export default class App {
       }
     }
 
-    // ซ่อน nav/footer บน /login
     if (normalized === "/login") {
       this.navContainer.style.display = "none";
       if (this.footer) this.footer.style.display = "none";
