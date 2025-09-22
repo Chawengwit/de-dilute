@@ -40,7 +40,6 @@ async function fetchWithLocalCache(key, fetchFn, ttl = 300000) { // default 5 �
     if (cached) {
       const { data, timestamp } = JSON.parse(cached);
       if (Date.now() - timestamp < ttl) {
-        console.info(`✅ Local cache hit: ${key}`);
         return data;
       }
     }
@@ -72,11 +71,23 @@ export async function getSettings(lang = "en") {
 
 export async function saveSettings(settings) {
   try {
-    const res = await api.post("/settings", { settings });
-    // 🗑️ invalidate local cache
+    // แปลง object { lang, theme } → array [{ key, value, ... }]
+    const payload = {
+      settings: Object.entries(settings).map(([key, value]) => ({
+        key,
+        value,
+        type: "text",
+        lang: settings.lang || "en",
+      })),
+    };
+
+    const res = await api.post("/settings", payload);
+
+    // invalidate local cache
     Object.keys(localStorage)
       .filter((key) => key.startsWith("settings:"))
       .forEach((key) => localStorage.removeItem(key));
+
     return res.data;
   } catch (err) {
     console.error("❌ Error saving settings:", err);

@@ -38,11 +38,6 @@ export default class App {
     /* -------------------- โหลด user state -------------------- */
     try {
       this.currentUser = await getCurrentUser();
-      if (this.currentUser) {
-        console.info("ℹ️ Logged in as:", this.currentUser.email);
-      } else {
-        console.info("ℹ️ Guest mode: user not logged in");
-      }
     } catch (err) {
       console.warn("⚠️ Could not fetch current user:", err.message);
       this.currentUser = null;

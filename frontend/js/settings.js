@@ -21,9 +21,12 @@ export async function initSettings() {
   settings.theme = getLocalSetting("theme", settings.theme);
 
   try {
-    const res = await apiGetSettings();
+    const res = await apiGetSettings(settings.lang);
     if (res) {
-      settings = { ...settings, ...res };
+      // ✅ merge API settings (res[key].value)
+      Object.keys(res).forEach((k) => {
+        settings[k] = res[k].value || settings[k];
+      });
     }
   } catch (err) {
     console.warn("⚠️ Failed to load API settings, using localStorage only");
