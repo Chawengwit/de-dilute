@@ -1,21 +1,35 @@
-<nav>
+<nav class="navbar">
+  <a href="/" class="logo" data-link class="nav-home" >De Dilute</a>
+
   <ul>
-    <li><a href="/" data-link class="nav-home" data-i18n="nav.home">Home</a></li>
     <li><a href="/login" data-link class="nav-login" data-i18n="nav.login">Login</a></li>
     <li><a href="/admin" data-link class="nav-admin" data-i18n="nav.admin">Admin</a></li>
   </ul>
 
-  <div class="nav-settings">
-    <!-- Language Selector -->
-    <select id="lang-select">
-      <option value="en" data-i18n="settings.language.en">English</option>
-      <option value="th" data-i18n="settings.language.th">ไทย</option>
-    </select>
+  <button class="hamburger" id="hamburger">&#9776;</button>
+  <div class="action-box" id="actionBox">
 
-    <!-- Theme Selector -->
-    <select id="theme-select">
-      <option value="light" data-i18n="settings.theme.light">Light</option>
-      <option value="dark" data-i18n="settings.theme.dark">Dark</option>
-    </select>
+    <div class="action-row">
+      <span class="action-label" data-i18n="settings.theme">Theme</span>
+      <div class="switch theme-switch day" id="themeSwitch">
+        <div class="thumb">☀️</div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <span class="action-label" data-i18n="settings.language">Language</span>
+      <div class="switch lang-switch uk" id="langSwitch">
+        <div class="thumb">🇬🇧</div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <span class="action-label" id="loginLabel" data-i18n="nav.login">Login</span>
+      <div class="switch login-switch off" id="loginSwitch">
+        <div class="thumb">🔑</div>
+      </div>
+    </div>
+    
   </div>
+
 </nav>

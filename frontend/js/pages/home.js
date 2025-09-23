@@ -19,24 +19,22 @@ export function init(container) {
         return;
       }
 
-      productList.innerHTML = products
-        .map(
-          (p) => `
-            <div class="product-card">
-              <div class="product-image">
-                <img src="${p.media?.[0]?.url || "/media/placeholder.png"}" 
-                    alt="${p.name}" />
-              </div>
-              <div class="product-content">
-                <h3 class="product-title">${p.name}</h3>
-                <p class="product-desc">${p.description || ""}</p>
-                <p class="product-price"><strong>$${Number(p.price).toFixed(2)}</strong></p>
-                <button class="btn-add" data-id="${p.id}">Add to Cart</button>
-              </div>
-            </div>
-          `
-        )
-        .join("");
+      let html = "";
+      for(let p of products){
+        html += `<div class="product-card">`;
+          html += `<div class="product-image">`
+            html += `<img src="${p.media?.[0]?.url || "/media/placeholder.png"}" alt="${p.name}" />`
+          html += `</div>`
+          html += `<div class="product-content">`
+            html += `<h3 class="product-title">${p.name}</h3>`
+            html += `<p class="product-desc">${p.description || ""}</p>`
+            html += `<p class="product-price"><strong>$${Number(p.price).toFixed(2)}</strong></p>`
+            html += `<button class="btn-add" data-id="${p.id}">Add to Cart</button>`
+          html += `</div>`
+        html += `</div>`
+      }
+      productList.innerHTML = html;
+
     })
     .catch((err) => {
       console.error("Error loading products:", err);

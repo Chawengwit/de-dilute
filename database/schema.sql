@@ -112,14 +112,17 @@ VALUES (
 ON CONFLICT (email) DO NOTHING;
 
 -- Demo product
-INSERT INTO products(slug, name, description, price, is_active)
-VALUES (
-  'dedilute-lemon-soda',
-  'DeDilute Lemon Soda',
-  'Refreshing lemon soda with a fizzy kick.',
-  2.99,
-  true
-)
+INSERT INTO products(slug, name, description, price, is_active) VALUES
+  ('dedilute-lemon-soda', 'DeDilute Lemon Soda', 'Refreshing lemon soda with a fizzy kick.', 2.99, true),
+  ('dedilute-orange-soda', 'DeDilute Orange Soda', 'Tangy orange soda with vibrant flavor.', 3.19, true),
+  ('dedilute-cola', 'DeDilute Cola', 'Classic cola with a modern twist.', 2.79, true),
+  ('dedilute-ginger-ale', 'DeDilute Ginger Ale', 'Spicy and refreshing ginger ale.', 3.49, true),
+  ('dedilute-grape-soda', 'DeDilute Grape Soda', 'Sweet grape soda bursting with fruity taste.', 2.89, true),
+  ('dedilute-lime-soda', 'DeDilute Lime Soda', 'Zesty lime soda with a crisp finish.', 2.99, true),
+  ('dedilute-root-beer', 'DeDilute Root Beer', 'Smooth root beer with vanilla undertones.', 3.29, true),
+  ('dedilute-strawberry-soda', 'DeDilute Strawberry Soda', 'Fruity strawberry soda with natural sweetness.', 3.09, true),
+  ('dedilute-pineapple-soda', 'DeDilute Pineapple Soda', 'Tropical pineapple soda with a juicy punch.', 3.39, true),
+  ('dedilute-mango-soda', 'DeDilute Mango Soda', 'Exotic mango soda with a rich, smooth flavor.', 3.59, true)
 ON CONFLICT (slug) DO NOTHING;
 
 -- Demo settings (multi-language)
