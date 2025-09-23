@@ -6,7 +6,7 @@ import redisClient from "../config/redis.js";
 /* Logging Helper                                     */
 /* -------------------------------------------------- */
 function logRateLimit(req, route) {
-  console.warn(`🚨 Rate limit exceeded: IP=${req.ip} Route=${route}`);
+  console.warn(`Rate limit exceeded: IP=${req.ip} Route=${route}`);
 }
 
 /* -------------------------------------------------- */

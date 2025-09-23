@@ -55,7 +55,7 @@ router.post("/register", validate(registerSchema), async (req, res) => {
             user,
         });
     } catch (err) {
-        console.error("❌ Register error:", err);
+        console.error("Register error:", err);
         res.status(500).json({ error: "Internal server error." });
     }
 });
@@ -100,7 +100,7 @@ router.post("/login", validate(loginSchema), async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("❌ Login error:", err);
+        console.error("Login error:", err);
         res.status(500).json({ error: "Internal server error." });
     }
 });
@@ -140,7 +140,7 @@ router.post("/permissions", authenticate, async (req, res) => {
 
     return res.json({ hasPermission: result.rows.length > 0 });
   } catch (err) {
-    console.error("❌ check-permissions error:", err);
+    console.error("check-permissions error:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -163,7 +163,7 @@ router.get("/me", authenticate, async (req, res) => {
 
         res.json({ user: result.rows[0] });
     } catch (err) {
-        console.error("❌ Me error:", err);
+        console.error("Me error:", err);
         res.status(500).json({ error: "Internal server error." });
     }
 });

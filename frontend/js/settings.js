@@ -23,13 +23,13 @@ export async function initSettings() {
   try {
     const res = await apiGetSettings(settings.lang);
     if (res) {
-      // ✅ merge API settings (res[key].value)
+      // merge API settings (res[key].value)
       Object.keys(res).forEach((k) => {
         settings[k] = res[k].value || settings[k];
       });
     }
   } catch (err) {
-    console.warn("⚠️ Failed to load API settings, using localStorage only");
+    console.warn("Failed to load API settings, using localStorage only");
   }
 
   // apply theme + lang
@@ -50,7 +50,7 @@ export async function setLanguageSetting(lang) {
     try {
       await saveSettings(settings);
     } catch (err) {
-      console.error("❌ Failed to save language, fallback to localStorage");
+      console.error("Failed to save language, fallback to localStorage");
       setLocalSetting("language", lang);
     }
   } else {
@@ -76,7 +76,7 @@ export async function setThemeSetting(theme) {
     try {
       await saveSettings(settings);
     } catch (err) {
-      console.error("❌ Failed to save theme, fallback to localStorage");
+      console.error("Failed to save theme, fallback to localStorage");
       setLocalSetting("theme", theme);
     }
   } else {

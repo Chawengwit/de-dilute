@@ -11,7 +11,7 @@ export async function loadTranslations(lang = "en") {
     translations = await res.json();
     currentLang = lang;
   } catch (err) {
-    console.error(`❌ Failed to load translations for ${lang}:`, err);
+    console.error(`Failed to load translations for ${lang}:`, err);
     translations = {};
     currentLang = "en";
   }

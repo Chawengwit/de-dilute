@@ -45,7 +45,7 @@ router.get("/public", validate(paginationSchema, "query"), cache("products_publi
 
       res.json(result.rows);
     } catch (err) {
-      console.error("❌ Error fetching public products:", err);
+      console.error("Error fetching public products:", err);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -81,7 +81,7 @@ router.post("/add", validate(productSchema, "body"), async (req, res) => {
     if (err.code === "23505") {
       return res.status(409).json({ error: "Slug already exists" });
     }
-    console.error("❌ Error adding product:", err);
+    console.error("Error adding product:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -117,7 +117,7 @@ router.put("/update/:id", validate(idSchema, "params"), validate(updateProductSc
 
       res.json(result.rows[0]);
     } catch (err) {
-      console.error("❌ Error updating product:", err);
+      console.error("Error updating product:", err);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -145,7 +145,7 @@ router.delete("/delete/:id", validate(idSchema, "params"), async (req, res) => {
 
     res.json({ message: "Product deleted", product: result.rows[0] });
   } catch (err) {
-    console.error("❌ Error deleting product:", err);
+    console.error("Error deleting product:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
