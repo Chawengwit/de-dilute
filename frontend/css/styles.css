@@ -356,6 +356,10 @@ footer p {
 
 /* ================= NAVBAR ================= */
 nav.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -365,12 +369,14 @@ nav.navbar {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 2px solid var(--glass-strong);
   box-shadow: var(--shadow-lg);
+  z-index: 1100; /* higher than action-box */
 }
 nav.navbar .logo {
   font-size: var(--font-size-lg);
   font-weight: bold;
   color: var(--color-text);
   text-decoration: none;
+  white-space: nowrap;
 }
 nav.navbar ul {
   list-style: none;
@@ -395,17 +401,28 @@ nav.navbar ul li a:active {
   color: var(--color-primary);
 }
 nav.navbar .hamburger {
-  font-size: var(--font-size-lg);
+  font-size: 1.75rem; /* bigger touch area */
   cursor: pointer;
   border: none;
   background: none;
-  color: inherit;
+  color: var(--color-text);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+  transition: background var(--transition-fast);
+}
+nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
+  background: var(--glass-bg-medium);
+}
+
+/* ให้ body มี margin-top กัน navbar บัง */
+body {
+  padding-top: 64px; /* = navbar height (ประมาณ) */
 }
 
 /* ================= ACTION BOX ================= */
 .action-box {
   position: absolute;
-  top: 70px;
+  top: 70px; /* under navbar */
   right: 20px;
   width: 300px;
   border-radius: var(--border-radius-2xl);
@@ -416,7 +433,7 @@ nav.navbar .hamburger {
   box-shadow: var(--shadow-xl);
   overflow: hidden;
   display: none;
-  z-index: 1000;
+  z-index: 1200;
 }
 .action-box.active {
   display: block;
@@ -473,10 +490,11 @@ nav.navbar .hamburger {
 }
 .switch .thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
+  top: 1px;
+  left: 1px;
   width: 28px;
   height: 28px;
+  padding-left: 3px;
   background: var(--color-white);
   border-radius: 50%;
   display: flex;
@@ -559,13 +577,14 @@ nav.navbar .hamburger {
 /* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
   nav.navbar {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    padding: var(--spacing-sm) var(--spacing-md);
   }
   nav.navbar ul {
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    display: none; /* hide nav links, rely on hamburger */
+  }
+  nav.navbar .hamburger {
+    margin-left: auto;
   }
 }
 .product-list {

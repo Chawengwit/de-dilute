@@ -84,6 +84,19 @@ export default class App {
 
       /* --- Theme Switch --- */
       if (themeSwitch && themeThumb) {
+        const currentTheme = getTheme();
+        document.documentElement.setAttribute("data-theme", currentTheme);
+
+        if (currentTheme === "dark") {
+          themeSwitch.classList.remove("day");
+          themeSwitch.classList.add("night");
+          themeThumb.textContent = "🌙";
+        } else {
+          themeSwitch.classList.remove("night");
+          themeSwitch.classList.add("day");
+          themeThumb.textContent = "☀️";
+        }
+
         themeSwitch.addEventListener("click", async () => {
           const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
           await setThemeSetting(newTheme);
@@ -103,6 +116,18 @@ export default class App {
 
       /* --- Language Switch --- */
       if (langSwitch && langThumb) {
+        const currentLang = getLanguage();
+
+        if (currentLang === "th") {
+          langSwitch.classList.remove("uk");
+          langSwitch.classList.add("us");
+          langThumb.textContent = "🇹🇭";
+        } else {
+          langSwitch.classList.remove("us");
+          langSwitch.classList.add("uk");
+          langThumb.textContent = "🇬🇧";
+        }
+
         langSwitch.addEventListener("click", async () => {
           const newLang = getLanguage() === "en" ? "th" : "en";
           await setLanguageSetting(newLang);
