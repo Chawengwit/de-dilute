@@ -17,7 +17,7 @@ const pool = new Pool({
 
 // Event listeners for pool
 pool.on("connect", () => {
-  console.log("🟢 PostgreSQL pool connected");
+  console.log("PostgreSQL pool connected");
 });
 
 pool.on("error", (err) => {

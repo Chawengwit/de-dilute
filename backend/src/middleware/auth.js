@@ -19,7 +19,7 @@ export function authenticate(req, res, next) {
         req.user = decoded; // { id, email }
         next();
     } catch (err) {
-        console.error("❌ JWT verify error:", err);
+        console.error("JWT verify error:", err);
         res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
 }

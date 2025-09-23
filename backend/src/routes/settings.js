@@ -31,7 +31,7 @@ router.get("/", cache("settings:", 300), async (req, res) => {
 
     res.json(settingsObj);
   } catch (err) {
-    console.error("❌ Error fetching settings:", err);
+    console.error("Error fetching settings:", err);
     res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
@@ -71,7 +71,7 @@ router.post("/", authenticate, async (req, res) => {
 
     res.json({ message: "Settings updated successfully", settings: updated });
   } catch (err) {
-    console.error("❌ Error saving settings:", err);
+    console.error("Error saving settings:", err);
     res.status(500).json({ error: "Failed to save settings" });
   }
 });

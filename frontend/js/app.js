@@ -38,13 +38,8 @@ export default class App {
     /* -------------------- โหลด user state -------------------- */
     try {
       this.currentUser = await getCurrentUser();
-      if (this.currentUser) {
-        console.info("ℹ️ Logged in as:", this.currentUser.email);
-      } else {
-        console.info("ℹ️ Guest mode: user not logged in");
-      }
     } catch (err) {
-      console.warn("⚠️ Could not fetch current user:", err.message);
+      console.warn("Could not fetch current user:", err.message);
       this.currentUser = null;
     }
 
@@ -100,7 +95,7 @@ export default class App {
           loginLink.textContent = t("nav.logout");
         }
       } else {
-        console.info("ℹ️ Guest mode: user not logged in");
+
       }
 
       // --- ตรวจสอบ admin ---
@@ -110,7 +105,7 @@ export default class App {
         if (adminLink) adminLink.parentElement.remove();
       }
     } catch (err) {
-      console.error("❌ Navigation load error:", err);
+      console.error("Navigation load error:", err);
       this.navContainer.innerHTML = `
         <nav>
           <ul>
@@ -140,7 +135,7 @@ export default class App {
 
           this.navigateTo("/login");
         } catch (err) {
-          console.error("⚠️ Logout failed:", err.message);
+          console.error("Logout failed:", err.message);
         }
         return;
       }
@@ -165,7 +160,7 @@ export default class App {
     if (normalized === "/admin") {
       const hasPermission = await checkPermission("ADMIN");
       if (!hasPermission) {
-        console.warn("⚠️ Access denied: redirecting to login");
+        console.warn("Access denied: redirecting to login");
         return this.navigateTo("/login");
       }
     }
@@ -187,7 +182,7 @@ export default class App {
       this.initPageModule(module, pageName);
       applyTranslations(this.mainContent);
     } catch (err) {
-      console.error(`❌ Error loading page module "${pageName}":`, err);
+      console.error(`Error loading page module "${pageName}":`, err);
       if (pageName !== "404") {
         this.loadPageModule("404");
       } else {
@@ -201,7 +196,7 @@ export default class App {
       this.mainContent.innerHTML = "";
       module.init(this.mainContent);
     } else {
-      console.error(`⚠️ Module "${pageName}" missing init() function.`);
+      console.error(`Module "${pageName}" missing init() function.`);
       this.mainContent.innerHTML = "<h1>Error loading page</h1>";
     }
   }

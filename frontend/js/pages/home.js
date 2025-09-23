@@ -39,7 +39,7 @@ export function init(container) {
         .join("");
     })
     .catch((err) => {
-      console.error("❌ Error loading products:", err);
+      console.error("Error loading products:", err);
       productList.innerHTML = `<p data-i18n="home.error">❌ Failed to load products.</p>`;
       applyTranslations(productList);
     });

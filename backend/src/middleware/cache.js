@@ -12,7 +12,6 @@ export function cache(keyPrefix, ttl = 60) {
       const cached = await redisClient.get(key);
 
       if (cached) {
-        console.log("✅ Cache hit:", key);
         return res.json(JSON.parse(cached));
       }
 
@@ -25,7 +24,7 @@ export function cache(keyPrefix, ttl = 60) {
 
       next();
     } catch (err) {
-      console.error("❌ Cache middleware error:", err);
+      console.error("Cache middleware error:", err);
       next(); // ให้ไป query DB ต่อถ้ามี error
     }
   };
@@ -40,9 +39,8 @@ export async function invalidateCache(keyPrefix) {
     const keys = await redisClient.keys(`${keyPrefix}*`);
     if (keys.length > 0) {
       await redisClient.del(keys);
-      console.log(`🗑️ Cache invalidated: ${keyPrefix} (${keys.length} keys)`);
     }
   } catch (err) {
-    console.error("❌ Error invalidating cache:", err);
+    console.error("Error invalidating cache:", err);
   }
 }
