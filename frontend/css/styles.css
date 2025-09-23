@@ -102,6 +102,7 @@ html {
 }
 
 body {
+  padding-top: 64px;
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
   line-height: 1.6;
@@ -111,9 +112,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.main-content {
+#main-content {
   min-height: calc(100vh - 64px);
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-xl);
 }
 
 a {
@@ -414,11 +415,6 @@ nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
   background: var(--glass-bg-medium);
 }
 
-/* ให้ body มี margin-top กัน navbar บัง */
-body {
-  padding-top: 64px; /* = navbar height (ประมาณ) */
-}
-
 /* ================= ACTION BOX ================= */
 .action-box {
   position: absolute;
@@ -591,6 +587,7 @@ body {
   display: grid;
   gap: var(--spacing-md);
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: var(--spacing-md);
 }
 
 .product-card {

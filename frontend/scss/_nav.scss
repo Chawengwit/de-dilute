@@ -69,11 +69,6 @@ nav.navbar {
   }
 }
 
-/* ให้ body มี margin-top กัน navbar บัง */
-body {
-  padding-top: 64px; /* = navbar height (ประมาณ) */
-}
-
 /* ================= ACTION BOX ================= */
 .action-box {
   position: absolute;

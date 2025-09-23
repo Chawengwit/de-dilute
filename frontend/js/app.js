@@ -118,6 +118,7 @@ export default class App {
       if (langSwitch && langThumb) {
         const currentLang = getLanguage();
 
+        // ตั้งค่าเริ่มต้นจาก localStorage/settings
         if (currentLang === "th") {
           langSwitch.classList.remove("uk");
           langSwitch.classList.add("us");
@@ -128,13 +129,20 @@ export default class App {
           langThumb.textContent = "🇬🇧";
         }
 
+        // เวลา user click สลับภาษา
         langSwitch.addEventListener("click", async () => {
           const newLang = getLanguage() === "en" ? "th" : "en";
+
+          // อัปเดตค่าใน localStorage/settings
           await setLanguageSetting(newLang);
           await setLanguage(newLang);
-          applyTranslations(this.navContainer);
-          applyTranslations(this.mainContent);
 
+          applyTranslations(this.navContainer);
+
+          // โหลด page ปัจจุบันใหม่เพื่อ refresh main content
+          this.loadPage(window.location.pathname);
+
+          // อัปเดต UI ของ switch
           if (newLang === "th") {
             langSwitch.classList.remove("uk");
             langSwitch.classList.add("us");
@@ -217,6 +225,9 @@ export default class App {
   setupNavigation() {
     this.navContainer.addEventListener("click", async (e) => {
       const link = e.target.closest("a[data-link], a[data-logout]");
+
+      console.log("AAA: ", link);
+
       if (!link) return;
       e.preventDefault();
 
