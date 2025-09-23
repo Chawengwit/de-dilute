@@ -144,7 +144,57 @@ nav.navbar {
     align-items: center;
     justify-content: center;
     font-size: var(--font-size-sm);
-    transition: transform var(--transition-normal), background var(--transition-fast);
+    transition: transform 0.4s ease, background var(--transition-fast), color var(--transition-fast);
+  }
+}
+
+/* --- Theme Switch --- */
+.theme-switch.day {
+  background: linear-gradient(45deg, #ff7e5f, #feb47b);
+
+  .thumb {
+    transform: translateX(0);
+    color: var(--color-warning);
+  }
+}
+.theme-switch.night {
+  background: linear-gradient(45deg, #283e51, #485563);
+
+  .thumb {
+    transform: translateX(46px);
+    color: var(--color-info);
+  }
+}
+
+/* --- Language Switch --- */
+.lang-switch.uk {
+  background: linear-gradient(45deg, #c8102e, #012169);
+
+  .thumb {
+    transform: translateX(0);
+  }
+}
+.lang-switch.us {
+  background: linear-gradient(45deg, #3c3b6e, #b22234);
+
+  .thumb {
+    transform: translateX(46px);
+  }
+}
+
+/* --- Login Switch --- */
+.login-switch.off {
+  background: var(--glass-bg-medium);
+
+  .thumb {
+    transform: translateX(0);
+  }
+}
+.login-switch.on {
+  background: linear-gradient(45deg, var(--color-success), var(--color-secondary));
+
+  .thumb {
+    transform: translateX(46px);
   }
 }
 

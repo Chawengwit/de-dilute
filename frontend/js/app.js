@@ -62,27 +62,104 @@ export default class App {
       this.navContainer.innerHTML = await res.text();
       applyTranslations(this.navContainer);
 
-      // Language selector
-      const langSelect = this.navContainer.querySelector("#lang-select");
-      if (langSelect) {
-        langSelect.value = getLanguage();
-        langSelect.addEventListener("change", async (e) => {
-          await setLanguageSetting(e.target.value);
-          this.loadPage(window.location.pathname);
+      /* -------------------- Action Box & Toggles -------------------- */
+      const hamburger = this.navContainer.querySelector("#hamburger");
+      const actionBox = this.navContainer.querySelector("#actionBox");
+
+      const themeSwitch = this.navContainer.querySelector("#themeSwitch");
+      const langSwitch = this.navContainer.querySelector("#langSwitch");
+      const loginSwitch = this.navContainer.querySelector("#loginSwitch");
+
+      const themeThumb = themeSwitch?.querySelector(".thumb");
+      const langThumb = langSwitch?.querySelector(".thumb");
+      const loginThumb = loginSwitch?.querySelector(".thumb");
+      const loginLabel = this.navContainer.querySelector("#loginLabel");
+
+      /* --- Hamburger --- */
+      if (hamburger && actionBox) {
+        hamburger.addEventListener("click", () => {
+          actionBox.classList.toggle("active");
         });
       }
 
-      // Theme selector
-      const themeSelect = this.navContainer.querySelector("#theme-select");
-      if (themeSelect) {
-        themeSelect.value = getTheme();
-        themeSelect.addEventListener("change", async (e) => {
-          await setThemeSetting(e.target.value);
-          this.loadPage(window.location.pathname);
+      /* --- Theme Switch --- */
+      if (themeSwitch && themeThumb) {
+        themeSwitch.addEventListener("click", async () => {
+          const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+          await setThemeSetting(newTheme);
+          document.documentElement.setAttribute("data-theme", newTheme);
+
+          if (newTheme === "dark") {
+            themeSwitch.classList.remove("day");
+            themeSwitch.classList.add("night");
+            themeThumb.textContent = "🌙";
+          } else {
+            themeSwitch.classList.remove("night");
+            themeSwitch.classList.add("day");
+            themeThumb.textContent = "☀️";
+          }
         });
       }
 
-      // --- ตรวจสอบ login ---
+      /* --- Language Switch --- */
+      if (langSwitch && langThumb) {
+        langSwitch.addEventListener("click", async () => {
+          const newLang = getLanguage() === "en" ? "th" : "en";
+          await setLanguageSetting(newLang);
+          await setLanguage(newLang);
+          applyTranslations(this.navContainer);
+          applyTranslations(this.mainContent);
+
+          if (newLang === "th") {
+            langSwitch.classList.remove("uk");
+            langSwitch.classList.add("us");
+            langThumb.textContent = "🇹🇭";
+          } else {
+            langSwitch.classList.remove("us");
+            langSwitch.classList.add("uk");
+            langThumb.textContent = "🇬🇧";
+          }
+        });
+      }
+
+      /* --- Login Switch --- */
+      if (loginSwitch && loginThumb && loginLabel) {
+        let isLoggedIn = !!this.currentUser;
+
+        const updateLoginUI = () => {
+          if (isLoggedIn) {
+            loginSwitch.classList.remove("off");
+            loginSwitch.classList.add("on");
+            loginThumb.textContent = "🚪";
+            loginLabel.textContent = t("nav.logout");
+          } else {
+            loginSwitch.classList.remove("on");
+            loginSwitch.classList.add("off");
+            loginThumb.textContent = "🔑";
+            loginLabel.textContent = t("nav.login");
+          }
+        };
+
+        updateLoginUI();
+
+        loginSwitch.addEventListener("click", async () => {
+          if (isLoggedIn) {
+            try {
+              await logout();
+              this.currentUser = null;
+              isLoggedIn = false;
+              updateLoginUI();
+              this.navigateTo("/login");
+            } catch (err) {
+              console.error("Logout failed:", err.message);
+            }
+          } else {
+            this.navigateTo("/login");
+          }
+        });
+      }
+
+      /* --- ตรวจสอบ login link (desktop nav) --- */
       if (this.currentUser) {
         const loginLink = this.navContainer.querySelector('a[href="/login"]');
         if (loginLink) {
@@ -90,15 +167,11 @@ export default class App {
           loginLink.setAttribute("data-logout", "true");
           loginLink.removeAttribute("data-link");
           loginLink.setAttribute("data-i18n", "nav.logout");
-
-          // ใช้ t() เพื่อให้แน่ใจว่าได้ข้อความแปลที่ถูกต้อง
           loginLink.textContent = t("nav.logout");
         }
-      } else {
-
       }
 
-      // --- ตรวจสอบ admin ---
+      /* --- ตรวจสอบ admin --- */
       const hasPermission = await checkPermission("ADMIN");
       if (!hasPermission) {
         const adminLink = this.navContainer.querySelector('a[href="/admin"]');
@@ -126,13 +199,11 @@ export default class App {
         try {
           await logout();
           this.currentUser = null;
-          // รีเซ็ตกลับไป login text ตามภาษา
           link.setAttribute("href", "/login");
           link.setAttribute("data-link", "true");
           link.removeAttribute("data-logout");
           link.setAttribute("data-i18n", "nav.login");
           link.textContent = t("nav.login");
-
           this.navigateTo("/login");
         } catch (err) {
           console.error("Logout failed:", err.message);
