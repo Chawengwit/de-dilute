@@ -12,6 +12,7 @@ html {
 }
 
 body {
+  padding-top: 64px;
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
   line-height: 1.6;
@@ -21,9 +22,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.main-content {
+#main-content {
   min-height: calc(100vh - 64px);
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-xl);
 }
 
 a {
