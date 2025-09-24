@@ -226,8 +226,6 @@ export default class App {
     this.navContainer.addEventListener("click", async (e) => {
       const link = e.target.closest("a[data-link], a[data-logout]");
 
-      console.log("AAA: ", link);
-
       if (!link) return;
       e.preventDefault();
 
