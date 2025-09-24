@@ -68,12 +68,12 @@ export default class App {
 
       const themeSwitch = this.navContainer.querySelector("#themeSwitch");
       const langSwitch = this.navContainer.querySelector("#langSwitch");
-      const loginSwitch = this.navContainer.querySelector("#loginSwitch");
+      // const loginSwitch = this.navContainer.querySelector("#loginSwitch");
 
       const themeThumb = themeSwitch?.querySelector(".thumb");
       const langThumb = langSwitch?.querySelector(".thumb");
-      const loginThumb = loginSwitch?.querySelector(".thumb");
-      const loginLabel = this.navContainer.querySelector("#loginLabel");
+      // const loginThumb = loginSwitch?.querySelector(".thumb");
+      // const loginLabel = this.navContainer.querySelector("#loginLabel");
 
       /* --- Hamburger --- */
       if (hamburger && actionBox) {
@@ -156,53 +156,53 @@ export default class App {
       }
 
       /* --- Login Switch --- */
-      if (loginSwitch && loginThumb && loginLabel) {
-        let isLoggedIn = !!this.currentUser;
+      // if (loginSwitch && loginThumb && loginLabel) {
+      //   let isLoggedIn = !!this.currentUser;
 
-        const updateLoginUI = () => {
-          if (isLoggedIn) {
-            loginSwitch.classList.remove("off");
-            loginSwitch.classList.add("on");
-            loginThumb.textContent = "🚪";
-            loginLabel.textContent = t("nav.logout");
-          } else {
-            loginSwitch.classList.remove("on");
-            loginSwitch.classList.add("off");
-            loginThumb.textContent = "🔑";
-            loginLabel.textContent = t("nav.login");
-          }
-        };
+      //   const updateLoginUI = () => {
+      //     if (isLoggedIn) {
+      //       loginSwitch.classList.remove("off");
+      //       loginSwitch.classList.add("on");
+      //       loginThumb.textContent = "🚪";
+      //       loginLabel.textContent = t("nav.logout");
+      //     } else {
+      //       loginSwitch.classList.remove("on");
+      //       loginSwitch.classList.add("off");
+      //       loginThumb.textContent = "🔑";
+      //       loginLabel.textContent = t("nav.login");
+      //     }
+      //   };
 
-        updateLoginUI();
+      //   updateLoginUI();
 
-        loginSwitch.addEventListener("click", async () => {
-          if (isLoggedIn) {
-            try {
-              await logout();
-              this.currentUser = null;
-              isLoggedIn = false;
-              updateLoginUI();
-              this.navigateTo("/login");
-            } catch (err) {
-              console.error("Logout failed:", err.message);
-            }
-          } else {
-            this.navigateTo("/login");
-          }
-        });
-      }
+      //   loginSwitch.addEventListener("click", async () => {
+      //     if (isLoggedIn) {
+      //       try {
+      //         await logout();
+      //         this.currentUser = null;
+      //         isLoggedIn = false;
+      //         updateLoginUI();
+      //         this.navigateTo("/login");
+      //       } catch (err) {
+      //         console.error("Logout failed:", err.message);
+      //       }
+      //     } else {
+      //       this.navigateTo("/login");
+      //     }
+      //   });
+      // }
 
       /* --- ตรวจสอบ login link (desktop nav) --- */
-      if (this.currentUser) {
-        const loginLink = this.navContainer.querySelector('a[href="/login"]');
-        if (loginLink) {
-          loginLink.setAttribute("href", "#logout");
-          loginLink.setAttribute("data-logout", "true");
-          loginLink.removeAttribute("data-link");
-          loginLink.setAttribute("data-i18n", "nav.logout");
-          loginLink.textContent = t("nav.logout");
-        }
-      }
+      // if (this.currentUser) {
+      //   const loginLink = this.navContainer.querySelector('a[href="/login"]');
+      //   if (loginLink) {
+      //     loginLink.setAttribute("href", "#logout");
+      //     loginLink.setAttribute("data-logout", "true");
+      //     loginLink.removeAttribute("data-link");
+      //     loginLink.setAttribute("data-i18n", "nav.logout");
+      //     loginLink.textContent = t("nav.logout");
+      //   }
+      // }
 
       /* --- ตรวจสอบ admin --- */
       const hasPermission = await checkPermission("ADMIN");
@@ -216,7 +216,6 @@ export default class App {
         <nav>
           <ul>
             <li><a href="/" data-link data-i18n="nav.home">Home</a></li>
-            <li><a href="/login" data-link data-i18n="nav.login">Login</a></li>
           </ul>
         </nav>`;
     }
@@ -233,11 +232,11 @@ export default class App {
         try {
           await logout();
           this.currentUser = null;
-          link.setAttribute("href", "/login");
-          link.setAttribute("data-link", "true");
-          link.removeAttribute("data-logout");
-          link.setAttribute("data-i18n", "nav.login");
-          link.textContent = t("nav.login");
+          // link.setAttribute("href", "/login");
+          // link.setAttribute("data-link", "true");
+          // link.removeAttribute("data-logout");
+          // link.setAttribute("data-i18n", "nav.login");
+          // link.textContent = t("nav.login");
           this.navigateTo("/login");
         } catch (err) {
           console.error("Logout failed:", err.message);
