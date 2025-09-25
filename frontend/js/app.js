@@ -83,7 +83,7 @@ export default class App {
       this.navContainer.innerHTML = await res.text();
       applyTranslations(this.navContainer);
 
-      const hamburger  = this.navContainer.querySelector("#hamburger");
+      const settingsBox  = this.navContainer.querySelector("#settings-box");
       const actionBox  = this.navContainer.querySelector("#actionBox");
       const themeSwitch = this.navContainer.querySelector("#themeSwitch");
       const langSwitch  = this.navContainer.querySelector("#langSwitch");
@@ -91,8 +91,8 @@ export default class App {
       const langThumb  = langSwitch?.querySelector(".thumb");
 
       /* --- Hamburger --- */
-      if (hamburger && actionBox) {
-        hamburger.addEventListener("click", () => {
+      if (settingsBox && actionBox) {
+        settingsBox.addEventListener("click", () => {
           actionBox.classList.toggle("active");
         });
       }
