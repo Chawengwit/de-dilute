@@ -1,5 +1,3 @@
-@forward "sass:color";
-
 :root {
   /* 🎨 Brand Colors (Light Theme) */
   --color-primary: #2563eb;
@@ -30,6 +28,13 @@
   --glass-bg-medium: rgba(255, 255, 255, 0.1);
   --glass-bg-strong: rgba(255, 255, 255, 0.15);
   --glass-border: rgba(255, 255, 255, 0.25);
+
+  /* 🎛️ Button Glass */
+  --button-bg: rgba(255, 255, 255, 0.1);
+  --button-border: rgba(255, 255, 255, 0.25);
+  --button-border-hover: rgba(255, 255, 255, 0.5);
+  --button-text: #ffffff;
+  --button-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 
   /* 📏 Spacing */
   --spacing-xs: 0.25rem;
@@ -95,7 +100,11 @@
   --glass-bg-strong: rgba(255, 255, 255, 0.12);
   --glass-border: rgba(255, 255, 255, 0.2);
 
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.6);
+  --button-bg: rgba(255, 255, 255, 0.08);
+  --button-border: rgba(255, 255, 255, 0.2);
+  --button-border-hover: rgba(255, 255, 255, 0.4);
+  --button-text: #e2e8f0;
+  --button-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 
   /* 🔗 Links (Dark) */
   --color-link: #4dabf7;

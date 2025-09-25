@@ -27,6 +27,12 @@
   --glass-bg-medium: rgba(255, 255, 255, 0.1);
   --glass-bg-strong: rgba(255, 255, 255, 0.15);
   --glass-border: rgba(255, 255, 255, 0.25);
+  /* 🎛️ Button Glass */
+  --button-bg: rgba(255, 255, 255, 0.1);
+  --button-border: rgba(255, 255, 255, 0.25);
+  --button-border-hover: rgba(255, 255, 255, 0.5);
+  --button-text: #ffffff;
+  --button-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   /* 📏 Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -83,7 +89,11 @@
   --glass-bg-medium: rgba(255, 255, 255, 0.08);
   --glass-bg-strong: rgba(255, 255, 255, 0.12);
   --glass-border: rgba(255, 255, 255, 0.2);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.6);
+  --button-bg: rgba(255, 255, 255, 0.08);
+  --button-border: rgba(255, 255, 255, 0.2);
+  --button-border-hover: rgba(255, 255, 255, 0.4);
+  --button-text: #e2e8f0;
+  --button-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   /* 🔗 Links (Dark) */
   --color-link: #4dabf7;
   --color-link-hover: #1a6ed1;
@@ -532,21 +542,6 @@ nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
   transform: translateX(46px);
 }
 
-/* --- Login Switch --- */
-.login-switch.off {
-  background: var(--glass-bg-medium);
-}
-.login-switch.off .thumb {
-  transform: translateX(0);
-}
-
-.login-switch.on {
-  background: linear-gradient(45deg, var(--color-success), var(--color-secondary));
-}
-.login-switch.on .thumb {
-  transform: translateX(46px);
-}
-
 /* ================= KEYFRAMES ================= */
 @keyframes blobMove1 {
   0% {
@@ -664,6 +659,141 @@ nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
 }
 [data-theme=dark] .product-card .product-desc {
   color: var(--color-gray-400);
+}
+
+.button-nav {
+  margin: var(--spacing-md);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.liquid-button {
+  position: relative;
+  padding: var(--spacing-sm) var(--spacing-xl);
+  font-size: var(--font-size-sm);
+  color: var(--button-text);
+  border: 1px solid var(--button-border);
+  border-radius: 50px;
+  background: var(--button-bg);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: var(--button-shadow);
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 1;
+  transition: transform var(--transition-normal), border-color var(--transition-normal), background var(--transition-normal), color var(--transition-normal);
+}
+
+.liquid-button::before,
+.liquid-button::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  border-radius: 40%;
+  z-index: 0;
+}
+
+.liquid-button::before {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.2), transparent 70%);
+  animation: blobMove1 14s ease-in-out infinite;
+}
+
+.liquid-button::after {
+  background: radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.1), transparent 70%);
+  animation: blobMove2 20s ease-in-out infinite;
+}
+
+.liquid-button:hover {
+  border-color: var(--button-border-hover);
+  transform: scale(1.05);
+}
+
+/* 🎨 Tone Variants */
+.liquid-button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.liquid-button.primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.liquid-button.secondary {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary);
+}
+
+.liquid-button.secondary:hover {
+  background: color-mix(in srgb, var(--color-secondary) 85%, white);
+}
+
+.liquid-button.success {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.liquid-button.success:hover {
+  background: color-mix(in srgb, var(--color-success) 85%, white);
+}
+
+.liquid-button.warning {
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
+.liquid-button.warning:hover {
+  background: color-mix(in srgb, var(--color-warning) 85%, white);
+}
+
+.liquid-button.danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.liquid-button.danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 85%, white);
+}
+
+.liquid-button.info {
+  background: var(--color-info);
+  border-color: var(--color-info);
+}
+
+.liquid-button.info:hover {
+  background: color-mix(in srgb, var(--color-info) 85%, white);
+}
+
+.liquid-button.violet {
+  background: var(--color-violet);
+  border-color: var(--color-violet);
+}
+
+.liquid-button.violet:hover {
+  background: color-mix(in srgb, var(--color-violet) 85%, white);
+}
+
+/* 🌊 Animations */
+@keyframes blobMove1 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20%, 10%) scale(1.1);
+  }
+}
+@keyframes blobMove2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-15%, -10%) scale(1.2);
+  }
 }
 
 /*# sourceMappingURL=styles.css.map */

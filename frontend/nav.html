@@ -1,8 +1,7 @@
 <nav class="navbar">
-  <a href="/" class="logo" data-link class="nav-home" >De Dilute</a>
+  <a href="/" class="logo nav-home" data-link>De Dilute</a>
 
   <ul>
-    <!-- <li><a href="/login" data-link class="nav-login" data-i18n="nav.login">Login</a></li> -->
     <li><a href="/admin" data-link class="nav-admin" data-i18n="nav.admin">Admin</a></li>
   </ul>
 
@@ -23,13 +22,10 @@
       </div>
     </div>
 
-    <div class="action-row">
-      <span class="action-label" id="loginLabel" data-i18n="nav.login">Login</span>
-      <div class="switch login-switch off" id="loginSwitch">
-        <div class="thumb">🔑</div>
-      </div>
+    <div class="button-nav">
+      <button id="btnLogin"  class="liquid-button primary" data-i18n="nav.login">Login</button>
+      <button id="btnLogout" class="liquid-button danger"  data-i18n="nav.logout">Logout</button>
     </div>
-    
-  </div>
 
+  </div>
 </nav>
