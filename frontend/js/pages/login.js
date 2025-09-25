@@ -66,7 +66,7 @@ export function init(container) {
     .querySelector("#open-register-modal")
     .addEventListener("click", () => openModal("register-modal"));
 
-  // Handle Login Submit
+  // Handle Login Submit (SPA ไม่รีเฟรชหน้า)
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = container.querySelector("#email").value.trim();
@@ -75,7 +75,9 @@ export function init(container) {
     try {
       await login(email, password);
       showNotification("login.success", "success"); // i18n key
-      window.location.href = "/"; // redirect SPA route
+
+      // แจ้งให้ App ทราบว่า auth เปลี่ยน → App จะอัปเดตปุ่ม + นำทางไป "/"
+      window.dispatchEvent(new CustomEvent("auth:changed", { detail: { status: "logged-in" } }));
     } catch (err) {
       console.error("Login Error:", err);
       showNotification("login.error", "error"); // i18n key

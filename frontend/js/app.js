@@ -23,27 +23,25 @@ export default class App {
     /* -------------------- Preload จาก localStorage -------------------- */
     const preloadLang = localStorage.getItem("language") || "en";
     const preloadTheme = localStorage.getItem("theme") || "light";
-
     document.documentElement.setAttribute("data-theme", preloadTheme);
     await setLanguage(preloadLang);
 
-    /* -------------------- Load API Settings -------------------- */
+    /* -------------------- โหลด settings จาก API/local -------------------- */
     await initSettings();
     const lang = getLanguage();
     const theme = getTheme();
-
     await setLanguage(lang);
     document.documentElement.setAttribute("data-theme", theme);
 
-    /* -------------------- โหลด user state -------------------- */
+    /* -------------------- โหลดสถานะผู้ใช้ -------------------- */
     try {
       this.currentUser = await getCurrentUser();
     } catch (err) {
-      console.warn("Could not fetch current user:", err.message);
+      console.warn("Could not fetch current user:", err?.message || err);
       this.currentUser = null;
     }
 
-    /* -------------------- Navigation + Page -------------------- */
+    /* -------------------- โหลด Navigation & หน้าแรก -------------------- */
     this.loadNavigation().then(() => {
       this.setupNavigation();
       this.loadPage(window.location.pathname);
@@ -52,8 +50,31 @@ export default class App {
     window.addEventListener("popstate", () => {
       this.loadPage(window.location.pathname);
     });
+
+    /* -------------------- ฟังอีเวนต์ auth สำหรับ SPA -------------------- */
+    window.addEventListener("auth:changed", async (e) => {
+      try {
+        this.currentUser = await getCurrentUser();
+      } catch {
+        this.currentUser = null;
+      }
+
+      // อัปเดตปุ่ม
+      this._updateAuthButtons();
+
+      // อัปเดตลิงก์ Admin ตามสิทธิ์ล่าสุด
+      await this._syncAdminLink();
+
+      // ถ้าเพิ่ง login สำเร็จ นำทางไป Home
+      if (e.detail?.status === "logged-in") {
+        this.navigateTo("/");
+      }
+    });
   }
 
+  /* -------------------------------------------------- */
+  /* Navigation                                         */
+  /* -------------------------------------------------- */
   async loadNavigation() {
     try {
       const res = await fetch("nav.html");
@@ -62,18 +83,12 @@ export default class App {
       this.navContainer.innerHTML = await res.text();
       applyTranslations(this.navContainer);
 
-      /* -------------------- Action Box & Toggles -------------------- */
-      const hamburger = this.navContainer.querySelector("#hamburger");
-      const actionBox = this.navContainer.querySelector("#actionBox");
-
+      const hamburger  = this.navContainer.querySelector("#hamburger");
+      const actionBox  = this.navContainer.querySelector("#actionBox");
       const themeSwitch = this.navContainer.querySelector("#themeSwitch");
-      const langSwitch = this.navContainer.querySelector("#langSwitch");
-      const loginSwitch = this.navContainer.querySelector("#loginSwitch");
-
+      const langSwitch  = this.navContainer.querySelector("#langSwitch");
       const themeThumb = themeSwitch?.querySelector(".thumb");
-      const langThumb = langSwitch?.querySelector(".thumb");
-      const loginThumb = loginSwitch?.querySelector(".thumb");
-      const loginLabel = this.navContainer.querySelector("#loginLabel");
+      const langThumb  = langSwitch?.querySelector(".thumb");
 
       /* --- Hamburger --- */
       if (hamburger && actionBox) {
@@ -118,7 +133,6 @@ export default class App {
       if (langSwitch && langThumb) {
         const currentLang = getLanguage();
 
-        // ตั้งค่าเริ่มต้นจาก localStorage/settings
         if (currentLang === "th") {
           langSwitch.classList.remove("uk");
           langSwitch.classList.add("us");
@@ -129,20 +143,14 @@ export default class App {
           langThumb.textContent = "🇬🇧";
         }
 
-        // เวลา user click สลับภาษา
         langSwitch.addEventListener("click", async () => {
           const newLang = getLanguage() === "en" ? "th" : "en";
-
-          // อัปเดตค่าใน localStorage/settings
           await setLanguageSetting(newLang);
           await setLanguage(newLang);
 
           applyTranslations(this.navContainer);
+          this.loadPage(window.location.pathname); // refresh main content translations
 
-          // โหลด page ปัจจุบันใหม่เพื่อ refresh main content
-          this.loadPage(window.location.pathname);
-
-          // อัปเดต UI ของ switch
           if (newLang === "th") {
             langSwitch.classList.remove("uk");
             langSwitch.classList.add("us");
@@ -155,79 +163,55 @@ export default class App {
         });
       }
 
-      /* --- Login Switch --- */
-      if (loginSwitch && loginThumb && loginLabel) {
-        let isLoggedIn = !!this.currentUser;
+      /* --- Login / Logout buttons --- */
+      const btnLogin  = this.navContainer.querySelector("#btnLogin");
+      const btnLogout = this.navContainer.querySelector("#btnLogout");
 
-        const updateLoginUI = () => {
-          if (isLoggedIn) {
-            loginSwitch.classList.remove("off");
-            loginSwitch.classList.add("on");
-            loginThumb.textContent = "🚪";
-            loginLabel.textContent = t("nav.logout");
-          } else {
-            loginSwitch.classList.remove("on");
-            loginSwitch.classList.add("off");
-            loginThumb.textContent = "🔑";
-            loginLabel.textContent = t("nav.login");
-          }
-        };
+      if (btnLogin) {
+        btnLogin.addEventListener("click", () => {
+          this.navigateTo("/login");
+        });
+      }
 
-        updateLoginUI();
+      if (btnLogout) {
+        btnLogout.addEventListener("click", async () => {
+          try {
+            await logout();
+            this.currentUser = null;
+            this._updateAuthButtons();
 
-        loginSwitch.addEventListener("click", async () => {
-          if (isLoggedIn) {
-            try {
-              await logout();
-              this.currentUser = null;
-              isLoggedIn = false;
-              updateLoginUI();
-              this.navigateTo("/login");
-            } catch (err) {
-              console.error("Logout failed:", err.message);
-            }
-          } else {
+            // หลัง logout ถ้าเคยมีลิงก์ admin ให้ถอดออก
+            const admin = this.navContainer.querySelector('a[href="/admin"]');
+            if (admin) admin.parentElement?.remove();
+
             this.navigateTo("/login");
+          } catch (err) {
+            console.error("Logout failed:", err?.message || err);
           }
         });
       }
 
-      /* --- ตรวจสอบ login link (desktop nav) --- */
-      if (this.currentUser) {
-        const loginLink = this.navContainer.querySelector('a[href="/login"]');
-        if (loginLink) {
-          loginLink.setAttribute("href", "#logout");
-          loginLink.setAttribute("data-logout", "true");
-          loginLink.removeAttribute("data-link");
-          loginLink.setAttribute("data-i18n", "nav.logout");
-          loginLink.textContent = t("nav.logout");
-        }
-      }
+      // ตั้งค่าปุ่มครั้งแรก
+      this._updateAuthButtons();
 
-      /* --- ตรวจสอบ admin --- */
-      const hasPermission = await checkPermission("ADMIN");
-      if (!hasPermission) {
-        const adminLink = this.navContainer.querySelector('a[href="/admin"]');
-        if (adminLink) adminLink.parentElement.remove();
-      }
+      // ซิงค์ลิงก์ admin ตามสิทธิ์ปัจจุบัน
+      await this._syncAdminLink();
+
     } catch (err) {
       console.error("Navigation load error:", err);
       this.navContainer.innerHTML = `
         <nav>
           <ul>
             <li><a href="/" data-link data-i18n="nav.home">Home</a></li>
-            <li><a href="/login" data-link data-i18n="nav.login">Login</a></li>
           </ul>
         </nav>`;
     }
   }
 
   setupNavigation() {
+    // รองรับคลิกลิงก์ทั่วไปใน nav (เช่น logo, เมนู)
     this.navContainer.addEventListener("click", async (e) => {
       const link = e.target.closest("a[data-link], a[data-logout]");
-
-      console.log("AAA: ", link);
-
       if (!link) return;
       e.preventDefault();
 
@@ -235,11 +219,7 @@ export default class App {
         try {
           await logout();
           this.currentUser = null;
-          link.setAttribute("href", "/login");
-          link.setAttribute("data-link", "true");
-          link.removeAttribute("data-logout");
-          link.setAttribute("data-i18n", "nav.login");
-          link.textContent = t("nav.login");
+          this._updateAuthButtons();
           this.navigateTo("/login");
         } catch (err) {
           console.error("Logout failed:", err.message);
@@ -251,6 +231,9 @@ export default class App {
     });
   }
 
+  /* -------------------------------------------------- */
+  /* Routing                                             */
+  /* -------------------------------------------------- */
   normalizePath(path) {
     return this.routes[path] ? path : "/404";
   }
@@ -272,6 +255,7 @@ export default class App {
       }
     }
 
+    // ซ่อน nav/footer เมื่ออยู่หน้า login
     if (normalized === "/login") {
       this.navContainer.style.display = "none";
       if (this.footer) this.footer.style.display = "none";
@@ -305,6 +289,47 @@ export default class App {
     } else {
       console.error(`Module "${pageName}" missing init() function.`);
       this.mainContent.innerHTML = "<h1>Error loading page</h1>";
+    }
+  }
+
+  /* -------------------------------------------------- */
+  /* Helpers                                            */
+  /* -------------------------------------------------- */
+  _updateAuthButtons() {
+    const btnLogin  = this.navContainer.querySelector("#btnLogin");
+    const btnLogout = this.navContainer.querySelector("#btnLogout");
+    const isLoggedIn = !!this.currentUser;
+
+    if (btnLogin)  btnLogin.style.display  = isLoggedIn ? "none" : "inline-flex";
+    if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
+  }
+
+  async _syncAdminLink() {
+    // เช็คสิทธิ์ ADMIN
+    const isAdmin = await checkPermission("ADMIN").catch(() => false);
+
+    const navUl = this.navContainer.querySelector("ul");
+    if (!navUl) return;
+
+    let adminLink = this.navContainer.querySelector('a[href="/admin"]');
+
+    if (isAdmin) {
+      // ถ้ายังไม่มีลิงก์ admin ให้เพิ่มเข้าไป
+      if (!adminLink) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = "/admin";
+        a.setAttribute("data-link", "");
+        a.className = "nav-admin";
+        a.setAttribute("data-i18n", "nav.admin");
+        a.textContent = t ? t("nav.admin") : "Admin";
+        li.appendChild(a);
+        navUl.appendChild(li);
+        applyTranslations(this.navContainer);
+      }
+    } else {
+      // ไม่มีสิทธิ์ → ถ้ามีลิงก์อยู่ให้ถอดออก
+      if (adminLink) adminLink.parentElement?.remove();
     }
   }
 }
