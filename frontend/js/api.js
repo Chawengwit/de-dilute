@@ -12,23 +12,31 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      const url = error.config.url;
+    const status = error.response?.status;
+    const url = error.config?.url || "";
 
+    // Treat 401/403/404 gracefully for specific endpoints
+    if ([401, 403, 404].includes(status)) {
+
+      // Current user probe → guest
       if (url.includes("/auth/me")) {
         return Promise.resolve({ data: { user: null } });
       }
 
+      // Permission check → no permission
       if (url.includes("/auth/permissions")) {
         return Promise.resolve({ data: { hasPermission: false } });
       }
 
+      // Settings (admin-only on backend) → return empty object so UI won't crash
       if (url.includes("/settings")) {
-        return Promise.resolve({ data: null });
+        return Promise.resolve({ data: {} });
       }
 
+      // Fallback for other cases we want to soft-fail
       return Promise.resolve({ data: null });
     }
+
     return Promise.reject(error);
   }
 );
@@ -65,7 +73,8 @@ export async function getProducts(limit = 10, offset = 0) {
 export async function getSettings(lang = "en") {
   return fetchWithLocalCache(`settings:${lang}`, async () => {
     const res = await api.get("/settings", { params: { lang } });
-    return res.data;
+    // If blocked or not available, ensure {} (interceptor already returns {} on 401/403/404)
+    return res.data || {};
   });
 }
 
@@ -134,7 +143,7 @@ export async function getCurrentUser() {
 
 export async function checkPermission(permission) {
   const res = await api.post("/auth/permissions", { permission });
-  return res.data.hasPermission;
+  return !!res.data.hasPermission;
 }
 
 // -------------------- Local Cache Cleanup (Auto Expire) --------------------
@@ -144,11 +153,9 @@ function cleanupLocalCache(ttl = 300000) {
     if (key.startsWith("products:") || key.startsWith("settings:")) {
       try {
         const cached = JSON.parse(localStorage.getItem(key));
-
         if (!cached?.timestamp || now - cached.timestamp > ttl) {
           localStorage.removeItem(key);
         }
-
       } catch {
         localStorage.removeItem(key); // ถ้า parse error → clear ไปเลย
       }

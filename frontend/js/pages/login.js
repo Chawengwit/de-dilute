@@ -76,7 +76,7 @@ export function init(container) {
       await login(email, password);
       showNotification("login.success", "success"); // i18n key
 
-      // แจ้งให้ App ทราบว่า auth เปลี่ยน → App จะอัปเดตปุ่ม + นำทางไป "/"
+      // แจ้งให้ App ทราบว่า auth เปลี่ยน → App จะอัปเดตปุ่ม + สิทธิ์ + นำทาง
       window.dispatchEvent(new CustomEvent("auth:changed", { detail: { status: "logged-in" } }));
     } catch (err) {
       console.error("Login Error:", err);

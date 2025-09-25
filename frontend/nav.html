@@ -1,16 +1,13 @@
 <nav class="navbar">
   <a href="/" class="logo nav-home" data-link>De Dilute</a>
 
-  <ul>
-    <li><a href="/admin" data-link class="nav-admin" data-i18n="nav.admin">Admin</a></li>
-  </ul>
+  <ul id="navMenu"></ul>
 
-  <button class="settings-box" id="settings-box">
+  <button class="settings-box" id="settings-box" aria-label="Open settings">
     <i class="fa-solid fa-gear"></i>
   </button>
 
   <div class="action-box" id="actionBox">
-
     <div class="action-row">
       <span class="action-label" data-i18n="settings.theme">Theme</span>
       <div class="switch theme-switch day" id="themeSwitch">
@@ -29,6 +26,5 @@
       <button id="btnLogin"  class="liquid-button primary" data-i18n="nav.login">Login</button>
       <button id="btnLogout" class="liquid-button danger"  data-i18n="nav.logout">Logout</button>
     </div>
-
   </div>
 </nav>
