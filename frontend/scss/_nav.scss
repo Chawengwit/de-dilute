@@ -52,8 +52,8 @@ nav.navbar {
     }
   }
 
-  .hamburger {
-    font-size: 1.75rem; /* bigger touch area */
+  .settings-box {
+    font-size: 1rem; /* bigger touch area */
     cursor: pointer;
     border: none;
     background: none;
@@ -64,6 +64,7 @@ nav.navbar {
 
     &:hover,
     &:focus {
+      color: var(--color-primary);
       background: var(--glass-bg-medium);
     }
   }
@@ -217,10 +218,10 @@ nav.navbar {
     padding: var(--spacing-sm) var(--spacing-md);
 
     ul {
-      display: none; /* hide nav links, rely on hamburger */
+      display: none; /* hide nav links, rely on settings-box */
     }
 
-    .hamburger {
+    .settings-box {
       margin-left: auto;
     }
   }

@@ -5,6 +5,9 @@ import compression from "compression";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import pool from "./db.js";
 import redisClient from "./config/redis.js";
 
@@ -25,6 +28,12 @@ import {
 dotenv.config();
 
 const app = express();
+
+/* -------------------------------------------------- */
+/* Resolve __dirname (ESM)                             */
+/* -------------------------------------------------- */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /* -------------------------------------------------- */
 /* Middleware                                         */
@@ -58,8 +67,39 @@ app.use(helmet());
 app.use(compression());
 
 // Logging
+app.use(morgan(process.env.NODE_ENV === "development" ? "dev" : "combined"));
+
+/* -------------------------------------------------- */
+/* Static: Font Awesome (local via node_modules)      */
+/* -------------------------------------------------- */
+/**
+ * Folder structure:
+ * backend/
+ *   ├─ node_modules/@fortawesome/fontawesome-free/css
+ *   └─ node_modules/@fortawesome/fontawesome-free/webfonts
+ *
+ * This exposes:
+ *   /css/all.min.css
+ *   /webfonts/* (woff2, woff, ttf)
+ *
+ * Then in your frontend HTML:
+ *   <link rel="stylesheet" href="/css/all.min.css" />
+ */
+const faBase = path.join(__dirname, "..", "node_modules", "@fortawesome", "fontawesome-free");
+
 app.use(
-  morgan(process.env.NODE_ENV === "development" ? "dev" : "combined")
+  "/css",
+  express.static(path.join(faBase, "css"), {
+    maxAge: "30d",
+    immutable: true,
+  })
+);
+app.use(
+  "/webfonts",
+  express.static(path.join(faBase, "webfonts"), {
+    maxAge: "30d",
+    immutable: true,
+  })
 );
 
 /* -------------------------------------------------- */

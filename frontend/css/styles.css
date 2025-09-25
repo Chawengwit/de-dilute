@@ -411,8 +411,8 @@ nav.navbar ul li a:hover, nav.navbar ul li a:focus {
 nav.navbar ul li a:active {
   color: var(--color-primary);
 }
-nav.navbar .hamburger {
-  font-size: 1.75rem; /* bigger touch area */
+nav.navbar .settings-box {
+  font-size: 1rem; /* bigger touch area */
   cursor: pointer;
   border: none;
   background: none;
@@ -421,7 +421,8 @@ nav.navbar .hamburger {
   border-radius: var(--border-radius-md);
   transition: background var(--transition-fast);
 }
-nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
+nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
+  color: var(--color-primary);
   background: var(--glass-bg-medium);
 }
 
@@ -572,9 +573,9 @@ nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
     padding: var(--spacing-sm) var(--spacing-md);
   }
   nav.navbar ul {
-    display: none; /* hide nav links, rely on hamburger */
+    display: none; /* hide nav links, rely on settings-box */
   }
-  nav.navbar .hamburger {
+  nav.navbar .settings-box {
     margin-left: auto;
   }
 }
@@ -663,7 +664,7 @@ nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
 .product-card .product-content {
   position: relative;
   z-index: 1; /* keep above blobs */
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   /* ==========================
      CTA Button (Glass style)
      ========================== */
@@ -686,8 +687,6 @@ nav.navbar .hamburger:hover, nav.navbar .hamburger:focus {
   font-size: var(--font-size-base);
   font-weight: 700;
   color: var(--color-primary);
-  margin-bottom: var(--spacing-md);
-  -webkit-backdrop-filter: blur(6px);
 }
 .product-card .product-content .btn-add {
   display: inline-flex;

@@ -1,31 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>De Dilute</title>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>De Dilute</title>
 
-    <!-- SEO / Social -->
-    <meta name="description" content="De Dilute - Fresh beverages delivered to your doorstep.">
-    <meta property="og:title" content="De Dilute">
-    <meta property="og:description" content="Drink fresh, stay hydrated.">
-    <meta property="og:type" content="website">
+  <!-- SEO / Social -->
+  <meta name="description" content="De Dilute - Fresh beverages delivered to your doorstep." />
+  <meta property="og:title" content="De Dilute" />
+  <meta property="og:description" content="Drink fresh, stay hydrated." />
+  <meta property="og:type" content="website" />
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="css/styles.css">
-    
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥤</text></svg>">
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css" />
 
+  <!-- Font Awesome (served by backend @ /css & /webfonts) -->
+  <!-- Dev: backend runs at http://localhost:3000 -->
+  <link rel="stylesheet" href="css/all.min.css">
+
+  <!-- Favicon (emoji) -->
+  <link
+    rel="icon"
+    href='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥤</text></svg>'
+  />
 </head>
 <body>
-    <div id="nav-container"></div>
+  <div id="nav-container"></div>
 
-    <main id="main-content"></main>
+  <main id="main-content"></main>
 
-    <footer>
-        <p>© <span id="year"></span> De Dilute</p>
-    </footer>
+  <footer>
+    <p>
+      © <span id="year"></span> De Dilute
+      <!-- Example FA usage -->
+      <span aria-hidden="true" title="Follow us">
+        &nbsp;•&nbsp;<i class="fa-brands fa-facebook"></i>
+        &nbsp;<i class="fa-brands fa-instagram"></i>
+        &nbsp;<i class="fa-brands fa-x-twitter"></i>
+      </span>
+    </p>
+  </footer>
 
-    <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

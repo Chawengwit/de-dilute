@@ -93,7 +93,7 @@
   .product-content {
     position: relative;
     z-index: 1; /* keep above blobs */
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
 
     .product-title {
       font-size: var(--font-size-lg);
@@ -115,7 +115,6 @@
       font-size: var(--font-size-base);
       font-weight: 700;
       color: var(--color-primary);
-      margin-bottom: var(--spacing-md);
     }
 
     /* ==========================
