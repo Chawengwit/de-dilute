@@ -29,7 +29,7 @@ export function init(container) {
             html += `<h3 class="product-title">${p.name}</h3>`
             html += `<p class="product-desc">${p.description || ""}</p>`
             html += `<p class="product-price"><strong>$${Number(p.price).toFixed(2)}</strong></p>`
-            html += `<button class="btn-add" data-id="${p.id}">Add to Cart</button>`
+            // html += `<button class="liquid-button primary btn-add" data-id="${p.id}">Add to Cart</button>`
           html += `</div>`
         html += `</div>`
       }
