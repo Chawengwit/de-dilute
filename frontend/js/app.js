@@ -90,7 +90,7 @@ export default class App {
       const themeThumb = themeSwitch?.querySelector(".thumb");
       const langThumb  = langSwitch?.querySelector(".thumb");
 
-      /* --- Hamburger --- */
+      /* --- Settings Box (toggle panel) --- */
       if (settingsBox && actionBox) {
         settingsBox.addEventListener("click", () => {
           actionBox.classList.toggle("active");
@@ -180,7 +180,7 @@ export default class App {
             this.currentUser = null;
             this._updateAuthButtons();
 
-            // หลัง logout ถ้าเคยมีลิงก์ admin ให้ถอดออก
+            // หลัง logout ถ้ามีลิงก์ admin ให้ถอดออก
             const admin = this.navContainer.querySelector('a[href="/admin"]');
             if (admin) admin.parentElement?.remove();
 
@@ -247,6 +247,7 @@ export default class App {
     const normalized = this.normalizePath(path);
     const pageName = this.routes[normalized];
 
+    // กันเข้า /admin เมื่อไม่ได้สิทธิ์
     if (normalized === "/admin") {
       const hasPermission = await checkPermission("ADMIN");
       if (!hasPermission) {
@@ -305,10 +306,10 @@ export default class App {
   }
 
   async _syncAdminLink() {
-    // เช็คสิทธิ์ ADMIN
+    // เช็คสิทธิ์ ADMIN (backend จะอิง .env ตามระบบของคุณ)
     const isAdmin = await checkPermission("ADMIN").catch(() => false);
 
-    const navUl = this.navContainer.querySelector("ul");
+    const navUl = this.navContainer.querySelector("#navMenu");
     if (!navUl) return;
 
     let adminLink = this.navContainer.querySelector('a[href="/admin"]');
