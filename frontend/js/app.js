@@ -76,6 +76,11 @@ export default class App {
   /* Navigation                                         */
   /* -------------------------------------------------- */
   async loadNavigation() {
+    if (this._navCleanup && typeof this._navCleanup === "function") {
+      this._navCleanup();
+    }
+    const cleanups = [];
+
     try {
       const res = await fetch("nav.html");
       if (!res.ok) throw new Error("Failed to load navigation");
@@ -83,41 +88,66 @@ export default class App {
       this.navContainer.innerHTML = await res.text();
       applyTranslations(this.navContainer);
 
-      const settingsBox  = this.navContainer.querySelector("#settings-box");
-      const actionBox  = this.navContainer.querySelector("#actionBox");
+      const settingsBox = this.navContainer.querySelector("#settings-box");
+      const actionBox   = this.navContainer.querySelector("#actionBox");
       const themeSwitch = this.navContainer.querySelector("#themeSwitch");
       const langSwitch  = this.navContainer.querySelector("#langSwitch");
-      const themeThumb = themeSwitch?.querySelector(".thumb");
-      const langThumb  = langSwitch?.querySelector(".thumb");
+      const themeThumb  = themeSwitch?.querySelector(".thumb");
+      const langThumb   = langSwitch?.querySelector(".thumb");
 
-      /* --- Settings Box (toggle panel) --- */
+      // ---------- Helpers ----------
+      const openActionBox  = () => actionBox?.classList.add("active");
+      const closeActionBox = () => actionBox?.classList.remove("active");
+      const toggleActionBox = () => actionBox?.classList.toggle("active");
+
+      /* -------------------- Settings Box -------------------- */
       if (settingsBox && actionBox) {
-        settingsBox.addEventListener("click", () => {
-          actionBox.classList.toggle("active");
+        const onSettingsClick = (e) => {
+          e.stopPropagation();
+          toggleActionBox();
+        };
+        settingsBox.addEventListener("click", onSettingsClick);
+        cleanups.push(() => settingsBox.removeEventListener("click", onSettingsClick));
+
+        const onActionBoxClick = (e) => {
+          // กันคลิกภายใน actionBox ไปปิดเอง
+          e.stopPropagation();
+        };
+        actionBox.addEventListener("click", onActionBoxClick);
+        cleanups.push(() => actionBox.removeEventListener("click", onActionBoxClick));
+
+        // ปิดเมื่อคลิก/ทัชนอกกรอบ
+        const outsideHandler = (ev) => {
+          if (actionBox.classList.contains("active") &&
+              !actionBox.contains(ev.target) &&
+              ev.target !== settingsBox) {
+            closeActionBox();
+          }
+        };
+        document.addEventListener("click", outsideHandler);
+        document.addEventListener("touchstart", outsideHandler);
+        cleanups.push(() => {
+          document.removeEventListener("click", outsideHandler);
+          document.removeEventListener("touchstart", outsideHandler);
         });
+
+        // ปิดด้วย Escape
+        const onKeydown = (ev) => {
+          if (ev.key === "Escape" && actionBox.classList.contains("active")) {
+            closeActionBox();
+          }
+        };
+        document.addEventListener("keydown", onKeydown);
+        cleanups.push(() => document.removeEventListener("keydown", onKeydown));
       }
 
-      /* --- Theme Switch --- */
+      /* -------------------- Theme Switch -------------------- */
       if (themeSwitch && themeThumb) {
         const currentTheme = getTheme();
         document.documentElement.setAttribute("data-theme", currentTheme);
 
-        if (currentTheme === "dark") {
-          themeSwitch.classList.remove("day");
-          themeSwitch.classList.add("night");
-          themeThumb.textContent = "🌙";
-        } else {
-          themeSwitch.classList.remove("night");
-          themeSwitch.classList.add("day");
-          themeThumb.textContent = "☀️";
-        }
-
-        themeSwitch.addEventListener("click", async () => {
-          const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-          await setThemeSetting(newTheme);
-          document.documentElement.setAttribute("data-theme", newTheme);
-
-          if (newTheme === "dark") {
+        const updateThemeUI = (theme) => {
+          if (theme === "dark") {
             themeSwitch.classList.remove("day");
             themeSwitch.classList.add("night");
             themeThumb.textContent = "🌙";
@@ -126,32 +156,25 @@ export default class App {
             themeSwitch.classList.add("day");
             themeThumb.textContent = "☀️";
           }
-        });
+        };
+        updateThemeUI(currentTheme);
+
+        const onThemeClick = async () => {
+          const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+          await setThemeSetting(newTheme);
+          document.documentElement.setAttribute("data-theme", newTheme);
+          updateThemeUI(newTheme);
+        };
+        themeSwitch.addEventListener("click", onThemeClick);
+        cleanups.push(() => themeSwitch.removeEventListener("click", onThemeClick));
       }
 
-      /* --- Language Switch --- */
+      /* -------------------- Language Switch -------------------- */
       if (langSwitch && langThumb) {
         const currentLang = getLanguage();
 
-        if (currentLang === "th") {
-          langSwitch.classList.remove("uk");
-          langSwitch.classList.add("us");
-          langThumb.textContent = "🇹🇭";
-        } else {
-          langSwitch.classList.remove("us");
-          langSwitch.classList.add("uk");
-          langThumb.textContent = "🇬🇧";
-        }
-
-        langSwitch.addEventListener("click", async () => {
-          const newLang = getLanguage() === "en" ? "th" : "en";
-          await setLanguageSetting(newLang);
-          await setLanguage(newLang);
-
-          applyTranslations(this.navContainer);
-          this.loadPage(window.location.pathname); // refresh main content translations
-
-          if (newLang === "th") {
+        const updateLangUI = (lang) => {
+          if (lang === "th") {
             langSwitch.classList.remove("uk");
             langSwitch.classList.add("us");
             langThumb.textContent = "🇹🇭";
@@ -160,27 +183,41 @@ export default class App {
             langSwitch.classList.add("uk");
             langThumb.textContent = "🇬🇧";
           }
-        });
+        };
+        updateLangUI(currentLang);
+
+        const onLangClick = async () => {
+          const newLang = getLanguage() === "en" ? "th" : "en";
+          await setLanguageSetting(newLang);
+          await setLanguage(newLang);
+
+          applyTranslations(this.navContainer);
+          this.loadPage(window.location.pathname); // refresh main content
+
+          updateLangUI(newLang);
+        };
+        langSwitch.addEventListener("click", onLangClick);
+        cleanups.push(() => langSwitch.removeEventListener("click", onLangClick));
       }
 
-      /* --- Login / Logout buttons --- */
+      /* -------------------- Login / Logout -------------------- */
       const btnLogin  = this.navContainer.querySelector("#btnLogin");
       const btnLogout = this.navContainer.querySelector("#btnLogout");
 
       if (btnLogin) {
-        btnLogin.addEventListener("click", () => {
-          this.navigateTo("/login");
-        });
+        const onLogin = () => this.navigateTo("/login");
+        btnLogin.addEventListener("click", onLogin);
+        cleanups.push(() => btnLogin.removeEventListener("click", onLogin));
       }
 
       if (btnLogout) {
-        btnLogout.addEventListener("click", async () => {
+        const onLogout = async () => {
           try {
             await logout();
             this.currentUser = null;
             this._updateAuthButtons();
 
-            // หลัง logout ถ้ามีลิงก์ admin ให้ถอดออก
+            // ลบลิงก์ admin ถ้ามี
             const admin = this.navContainer.querySelector('a[href="/admin"]');
             if (admin) admin.parentElement?.remove();
 
@@ -188,13 +225,13 @@ export default class App {
           } catch (err) {
             console.error("Logout failed:", err?.message || err);
           }
-        });
+        };
+        btnLogout.addEventListener("click", onLogout);
+        cleanups.push(() => btnLogout.removeEventListener("click", onLogout));
       }
 
-      // ตั้งค่าปุ่มครั้งแรก
+      // ตั้งค่าเริ่มต้น
       this._updateAuthButtons();
-
-      // ซิงค์ลิงก์ admin ตามสิทธิ์ปัจจุบัน
       await this._syncAdminLink();
 
     } catch (err) {
@@ -205,8 +242,12 @@ export default class App {
             <li><a href="/" data-link data-i18n="nav.home">Home</a></li>
           </ul>
         </nav>`;
+    } finally {
+      // เก็บฟังก์ชัน cleanup ไว้ใช้รอบหน้า
+      this._navCleanup = () => cleanups.forEach(fn => { try { fn(); } catch {} });
     }
   }
+
 
   setupNavigation() {
     // รองรับคลิกลิงก์ทั่วไปใน nav (เช่น logo, เมนู)

@@ -439,11 +439,17 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
   -webkit-backdrop-filter: blur(20px);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
-  display: none;
+  /* ใช้ transition แบบ fade + scale */
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
   z-index: 1200;
 }
 .action-box.active {
-  display: block;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 .action-box::before, .action-box::after {
   content: "";
@@ -478,6 +484,12 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 .action-box .action-row .action-label {
   font-size: var(--font-size-sm);
   font-weight: bold;
+}
+.action-box .button-nav {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  z-index: 1;
 }
 
 /* ================= SWITCHES ================= */
