@@ -17,7 +17,6 @@ api.interceptors.response.use(
 
     // Treat 401/403/404 gracefully for specific endpoints
     if ([401, 403, 404].includes(status)) {
-
       // Current user probe → guest
       if (url.includes("/auth/me")) {
         return Promise.resolve({ data: { user: null } });
@@ -73,14 +72,12 @@ export async function getProducts(limit = 10, offset = 0) {
 export async function getSettings(lang = "en") {
   return fetchWithLocalCache(`settings:${lang}`, async () => {
     const res = await api.get("/settings", { params: { lang } });
-    // If blocked or not available, ensure {} (interceptor already returns {} on 401/403/404)
     return res.data || {};
   });
 }
 
 export async function saveSettings(settings) {
   try {
-    // แปลง object { lang, theme } → array [{ key, value, ... }]
     const payload = {
       settings: Object.entries(settings).map(([key, value]) => ({
         key,
@@ -146,6 +143,56 @@ export async function checkPermission(permission) {
   return !!res.data.hasPermission;
 }
 
+/** Helper: assert ADMIN permission (throw if not allowed) */
+async function assertAdmin() {
+  const ok = await checkPermission("ADMIN");
+  if (!ok) throw new Error("Permission denied (ADMIN required)");
+}
+
+/**
+ * Create Product (ADMIN only)
+ * @param {Object} payload { slug, name, description, price, is_active=true }
+ * @returns {Promise<Object>} created product
+ */
+export async function createProduct(payload) {
+  await assertAdmin();
+
+  const body = {
+    slug: payload.slug,
+    name: payload.name,
+    description: payload.description ?? null,
+    price: Number(payload.price),
+    is_active: payload.is_active ?? true,
+  };
+
+  const res = await api.post("/products/add", body);
+
+  // invalidate product list cache keys
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith("products:"))
+    .forEach((k) => localStorage.removeItem(k));
+
+  return res.data;
+}
+
+/**
+ * (Optional) Upload media for a product after create
+ * Requires backend /api/media/upload (multipart/form-data)
+ */
+export async function uploadProductMedia(productId, files = []) {
+  await assertAdmin();
+  if (!files.length) return [];
+
+  const fd = new FormData();
+  fd.append("product_id", String(productId));
+  files.forEach((f) => fd.append("files", f));
+
+  const res = await api.post("/media/upload", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
 // -------------------- Local Cache Cleanup (Auto Expire) --------------------
 function cleanupLocalCache(ttl = 300000) {
   const now = Date.now();
@@ -157,7 +204,7 @@ function cleanupLocalCache(ttl = 300000) {
           localStorage.removeItem(key);
         }
       } catch {
-        localStorage.removeItem(key); // ถ้า parse error → clear ไปเลย
+        localStorage.removeItem(key);
       }
     }
   });

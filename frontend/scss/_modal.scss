@@ -13,28 +13,100 @@
   .modal-content {
     background: var(--color-bg);
     color: var(--color-text);
-    margin: 10% auto;
-    padding: 2rem;
+    margin: 6% auto;
+    padding: 1.5rem;
     border-radius: var(--border-radius-xl);
-    width: 400px;
+    width: min(560px, 92vw);
     box-shadow: var(--shadow-lg);
     position: relative;
     animation: fadeIn 0.3s ease;
 
     h2 {
-      margin-bottom: 1rem;
+      margin: 0 0 1rem 0;
       color: var(--color-primary);
       text-align: center;
+    }
+
+    form {
+      display: grid;
+      gap: 0.875rem;
+    }
+
+    .form-group {
+      display: grid;
+      gap: 0.5rem;
+
+      label {
+        font-weight: 600;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      input[type="file"],
+      textarea,
+      select {
+        width: 100%;
+        padding: 0.65rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid var(--color-gray-300);
+        background: var(--color-white);
+        color: var(--color-text);
+        outline: none;
+
+        &:focus {
+          border-color: var(--color-primary);
+          box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 25%, transparent);
+        }
+      }
+
+      .help-text {
+        font-size: 0.8rem;
+        color: var(--color-gray-500);
+      }
+    }
+
+    .media-preview {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 0.5rem;
+
+      .preview-item {
+        border: 1px dashed var(--color-gray-300);
+        border-radius: 10px;
+        padding: 4px;
+        display: grid;
+        place-items: center;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+
+        img,
+        video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 8px;
+        }
+      }
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      margin-top: 0.5rem;
     }
   }
 
   .close-button {
     position: absolute;
-    top: 12px;
-    right: 16px;
+    top: 10px;
+    right: 12px;
     font-size: 1.5rem;
+    line-height: 1;
     cursor: pointer;
     color: var(--color-text);
+    background: transparent;
+    border: 0;
 
     &:hover {
       color: var(--color-primary);
@@ -43,12 +115,6 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

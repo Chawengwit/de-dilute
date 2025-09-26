@@ -19,6 +19,7 @@
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   box-shadow: var(--button-shadow);
+  width: fit-content;
   cursor: pointer;
   overflow: hidden;
   z-index: 1;
