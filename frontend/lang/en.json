@@ -34,7 +34,9 @@
   "settings.language": "Language",
   "settings.theme": "Theme",
   "settings.theme.light": "Light",
-  "settings.theme.dark": "Dark"
+  "settings.theme.dark": "Dark",
+
+  "buttons.addProduct" : "Add Product"
 
 
 }

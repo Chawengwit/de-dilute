@@ -34,5 +34,8 @@
   "settings.language": "ภาษา",
   "settings.theme": "ธีม",
   "settings.theme.light": "สว่าง",
-  "settings.theme.dark": "มืด"
+  "settings.theme.dark": "มืด",
+
+  "buttons.addProduct" : "เพิ่มสินค้า"
+
 }

@@ -8,6 +8,7 @@ import {
   idSchema,
 } from "../schemas/schemas.js";
 import { cache, invalidateCache } from "../middleware/cache.js";
+import { authenticate, requirePermission } from "../middleware/auth.js"; // ✅ ใช้ Permission-Based
 
 const router = Router();
 
@@ -16,7 +17,11 @@ const router = Router();
  * Public landing data (active products + media) with pagination
  * ใช้ cache 300s
  */
-router.get("/public", validate(paginationSchema, "query"), cache("products_public:", 300), async (req, res) => {
+router.get(
+  "/public",
+  validate(paginationSchema, "query"),
+  cache("products_public:", 300),
+  async (req, res) => {
     try {
       const { limit, offset } = req.query;
 
@@ -53,51 +58,66 @@ router.get("/public", validate(paginationSchema, "query"), cache("products_publi
 
 /**
  * POST /api/products/add
- * Create product
+ * Create product (ADMIN permission required)
  * invalidate cache หลัง insert
  */
-router.post("/add", validate(productSchema, "body"), async (req, res) => {
-  try {
-    const { slug, name, description, price, is_active } = req.body;
+router.post(
+  "/add",
+  authenticate,
+  requirePermission("ADMIN"),
+  validate(productSchema, "body"),
+  async (req, res) => {
+    try {
+      const { slug, name, description, price, is_active } = req.body;
 
-    const query = `
-      INSERT INTO products (slug, name, description, price, is_active)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *;
-    `;
-    const result = await pool.query(query, [
-      slug,
-      name,
-      description ?? null,
-      price,
-      is_active ?? true,
-    ]);
+      const query = `
+        INSERT INTO products (slug, name, description, price, is_active)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+      `;
+      const result = await pool.query(query, [
+        slug,
+        name,
+        description ?? null,
+        price,
+        is_active ?? true,
+      ]);
 
-    // 🗑️ clear public cache
-    await invalidateCache("products_public:");
+      // 🗑️ clear public cache
+      await invalidateCache("products_public:");
 
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    if (err.code === "23505") {
-      return res.status(409).json({ error: "Slug already exists" });
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      if (err.code === "23505") {
+        return res.status(409).json({ error: "Slug already exists" });
+      }
+      console.error("Error adding product:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-    console.error("Error adding product:", err);
-    res.status(500).json({ error: "Internal server error" });
   }
-});
+);
 
 /**
  * PUT /api/products/update/:id
- * Update product by id
+ * Update product by id (ADMIN permission required)
  * invalidate cache หลัง update
  */
-router.put("/update/:id", validate(idSchema, "params"), validate(updateProductSchema, "body"), async (req, res) => {
+router.put(
+  "/update/:id",
+  authenticate,
+  requirePermission("ADMIN"),
+  validate(idSchema, "params"),
+  validate(updateProductSchema, "body"),
+  async (req, res) => {
     try {
       const { id } = req.params;
 
       const fields = Object.keys(req.body);
-      const values = Object.values(req.body);
+      if (fields.length === 0) {
+        return res.status(400).json({ error: "No fields to update" });
+      }
 
+      const values = Object.values(req.body);
       const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(", ");
       const query = `
         UPDATE products
@@ -125,29 +145,35 @@ router.put("/update/:id", validate(idSchema, "params"), validate(updateProductSc
 
 /**
  * DELETE /api/products/delete/:id
- * Delete product by id
+ * Delete product by id (ADMIN permission required)
  * invalidate cache หลัง delete
  */
-router.delete("/delete/:id", validate(idSchema, "params"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(
-      "DELETE FROM products WHERE id = $1 RETURNING *;",
-      [id]
-    );
+router.delete(
+  "/delete/:id",
+  authenticate,
+  requirePermission("ADMIN"),
+  validate(idSchema, "params"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await pool.query(
+        "DELETE FROM products WHERE id = $1 RETURNING *;",
+        [id]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Product not found" });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // 🗑️ clear public cache
+      await invalidateCache("products_public:");
+
+      res.json({ message: "Product deleted", product: result.rows[0] });
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    // 🗑️ clear public cache
-    await invalidateCache("products_public:");
-
-    res.json({ message: "Product deleted", product: result.rows[0] });
-  } catch (err) {
-    console.error("Error deleting product:", err);
-    res.status(500).json({ error: "Internal server error" });
   }
-});
+);
 
 export default router;
