@@ -1,25 +1,35 @@
-import { getProducts, createProduct, uploadProductMedia, checkPermission } from "../api.js";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  uploadProductMedia,
+  checkPermission,
+} from "../api.js";
+
 import { applyTranslations } from "../i18n.js";
+import { openModal, closeModal, initModal, showNotification } from "../utils.js"; // ✅ ใช้ฟังก์ชันกลาง
 
 export function init(container) {
   /* -------------------- Markup -------------------- */
   let templateHTML = "";
   templateHTML += `<section class="home-page">`;
-    templateHTML += `<h2 data-i18n="home.products">Products</h2>`;
-    templateHTML += `<div id="product-action" class="product-action">`;
-      templateHTML += `<button class="liquid-button primary" id="add-product" data-i18n="buttons.addProduct">Add Product</button>`;
-    templateHTML += `</div>`;
-    templateHTML += `<div id="product-list" class="product-list" data-i18n="home.loading">Loading...</div>`;
+  templateHTML += `  <h2 data-i18n="home.products">Products</h2>`;
+  templateHTML += `  <div id="product-action" class="product-action">`;
+  templateHTML += `    <button class="liquid-button primary" id="add-product" data-i18n="buttons.addProduct">Add Product</button>`;
+  templateHTML += `  </div>`;
+  templateHTML += `  <div id="product-list" class="product-list" data-i18n="home.loading">Loading...</div>`;
   templateHTML += `</section>`;
 
-  // Modal markup
+  // Modal markup (ใช้ร่วมทั้ง create/edit)
   templateHTML += `
-  <div id="product-modal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="product-modal-title">
+  <div id="product-modal" class="modal" role="dialog" aria-hidden="true" aria-labelledby="product-modal-title">
     <div class="modal-content">
-      <button class="close-button" id="product-modal-close" aria-label="Close">×</button>
+      <button class="close-button" aria-label="Close">&times;</button>
       <h2 id="product-modal-title" data-i18n="products.add_title">Add Product</h2>
 
       <form id="product-form">
+        <input type="hidden" id="prod-id" name="id" value="">
+        <input type="hidden" id="form-mode" name="mode" value="create">
         <div class="form-group">
           <label for="prod-slug">Slug</label>
           <input id="prod-slug" name="slug" type="text" required pattern="[a-z0-9-]+" placeholder="dedilute-lemon-soda" />
@@ -61,75 +71,28 @@ export function init(container) {
   /* -------------------- Refs -------------------- */
   const productList   = container.querySelector("#product-list");
   const addBtn        = container.querySelector("#add-product");
-  const modalEl       = container.querySelector("#product-modal");
-  const modalCloseBtn = container.querySelector("#product-modal-close");
-  const cancelBtn     = container.querySelector("#product-cancel");
-  const formEl        = container.querySelector("#product-form");
-  const mediaInput    = container.querySelector("#prod-media");
-  const mediaPreview  = container.querySelector("#media-preview");
-  const slugInput     = container.querySelector("#prod-slug");
-  const nameInput     = container.querySelector("#prod-name");
+  const productAction = container.querySelector("#product-action");
+
+  // Modal refs
+  const modalId     = "product-modal";
+  const formEl      = container.querySelector("#product-form");
+  const idInput     = container.querySelector("#prod-id");
+  const modeInput   = container.querySelector("#form-mode");
+  const slugInput   = container.querySelector("#prod-slug");
+  const nameInput   = container.querySelector("#prod-name");
+  const descInput   = container.querySelector("#prod-desc");
+  const priceInput  = container.querySelector("#prod-price");
+  const mediaInput  = container.querySelector("#prod-media");
+  const mediaPreview= container.querySelector("#media-preview");
+  const modalTitle  = container.querySelector("#product-modal-title");
+  const cancelBtn   = container.querySelector("#product-cancel");
+  const saveBtn     = container.querySelector("#product-save");
+
+  /* -------------------- State -------------------- */
+  let isAdmin = false;
+  let productsCache = [];
 
   /* -------------------- Helpers -------------------- */
-  const renderProducts = (products = []) => {
-    if (!products.length) {
-      productList.innerHTML = `<p data-i18n="home.no_products">No products available.</p>`;
-      applyTranslations(productList);
-      return;
-    }
-
-    let html = "";
-    for (let p of products) {
-      html += `<div class="product-card">`;
-        html += `<div class="product-image">`;
-          html += `<img src="${p?.media?.[0]?.url || "/media/placeholder.png"}" alt="${p.name}" loading="lazy" />`;
-        html += `</div>`;
-        html += `<div class="product-content">`;
-          html += `<h3 class="product-title">${p.name}</h3>`;
-          html += `<p class="product-desc">${p.description || ""}</p>`;
-          html += `<p class="product-price"><strong>$${Number(p.price).toFixed(2)}</strong></p>`;
-        html += `</div>`;
-      html += `</div>`;
-    }
-    productList.innerHTML = html;
-  };
-
-  const loadProducts = async () => {
-    productList.setAttribute("data-i18n", "home.loading");
-    productList.textContent = "Loading...";
-    try {
-      const products = await getProducts(10, 0);
-      renderProducts(products || []);
-    } catch (err) {
-      console.error("Error loading products:", err);
-      productList.innerHTML = `<p data-i18n="home.error">❌ Failed to load products.</p>`;
-      applyTranslations(productList);
-    }
-  };
-
-  const openModal = () => {
-    modalEl.style.display = "block";
-    modalEl.setAttribute("aria-hidden", "false");
-    formEl.reset();
-    mediaPreview.innerHTML = "";
-    // สร้าง slug อัตโนมัติจาก name เมื่อผู้ใช้พิมพ์
-    nameInput.addEventListener("input", autoSlugger);
-    const first = formEl.querySelector("input, textarea, select, button");
-    first && first.focus();
-    document.addEventListener("keydown", escHandler);
-  };
-
-  const closeModal = () => {
-    modalEl.style.display = "none";
-    modalEl.setAttribute("aria-hidden", "true");
-    nameInput.removeEventListener("input", autoSlugger);
-    document.removeEventListener("keydown", escHandler);
-  };
-
-  const escHandler = (e) => {
-    if (e.key === "Escape") closeModal();
-  };
-
   const autoSlugger = () => {
     if (!slugInput.value) {
       slugInput.value = nameInput.value
@@ -141,24 +104,113 @@ export function init(container) {
     }
   };
 
-  /* -------------------- Init Load -------------------- */
-  loadProducts();
+  const setMode = (mode = "create", product = null) => {
+    modeInput.value = mode;
 
-  /* -------------------- Events -------------------- */
-  addBtn.addEventListener("click", openModal);
-  modalCloseBtn.addEventListener("click", closeModal);
-  cancelBtn.addEventListener("click", closeModal);
+    if (mode === "create") {
+      modalTitle.setAttribute("data-i18n", "products.add_title");
+      modalTitle.textContent = "Add Product";
+      saveBtn.setAttribute("data-i18n", "buttons.save");
+      saveBtn.textContent = "Save";
 
-  // click outside to close
-  modalEl.addEventListener("click", (e) => {
-    if (e.target === modalEl) closeModal();
-  });
+      idInput.value = "";
+      formEl.reset();
+      mediaPreview.innerHTML = "";
+      slugInput.removeAttribute("readonly");
+    } else {
+      modalTitle.setAttribute("data-i18n", "products.edit_title");
+      modalTitle.textContent = "Edit Product";
+      saveBtn.setAttribute("data-i18n", "buttons.update");
+      saveBtn.textContent = "Update";
 
-  // File preview
-  mediaInput.addEventListener("change", () => {
+      // เติมค่าจาก product
+      idInput.value    = product.id;
+      slugInput.value  = product.slug || "";
+      nameInput.value  = product.name || "";
+      descInput.value  = product.description || "";
+      priceInput.value = product.price != null ? Number(product.price) : "";
+      mediaPreview.innerHTML = "";
+      slugInput.setAttribute("readonly", "readonly"); // slug คงที่ ถ้าจะให้แก้ได้ก็เอาออก
+    }
+    applyTranslations(container);
+  };
+
+  const productCardHTML = (p) => {
+    const cover = p?.media?.[0]?.url || "/media/placeholder.png";
+
+    let html = "";
+    html += `<div class="product-card">`;
+
+      html += `<div class="product-image">`;
+        html += `<img src="${cover}" alt="${p.name}" loading="lazy" />`;
+      html += `</div>`;
+      
+      html += `<div class="product-content">`;
+        html += `<h3 class="product-title">${p.name}</h3>`;
+        html += `<p class="product-desc">${p.description || ""}</p>`;
+        html += `<p class="product-price"><strong>$${Number(p.price).toFixed(2)}</strong></p>`;
+      html += `</div>`;
+
+    if (isAdmin) {
+      html += `<div class="product-actions">`;
+        html += `<button class="liquid-button" data-action="edit" data-id="${p.id}">Edit</button>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+
+    return html;
+  };
+
+  const renderProducts = (products = []) => {
+    if (!products.length) {
+      productList.innerHTML = `<p data-i18n="home.no_products">No products available.</p>`;
+      applyTranslations(productList);
+      return;
+    }
+    productList.innerHTML = products.map(productCardHTML).join("");
+  };
+
+  const loadProducts = async () => {
+    productList.setAttribute("data-i18n", "home.loading");
+    productList.textContent = "Loading...";
+    try {
+      const rows = await getProducts(10, 0);
+      productsCache = rows || [];
+      renderProducts(productsCache);
+    } catch (err) {
+      console.error("Error loading products:", err);
+      productList.innerHTML = `<p data-i18n="home.error">❌ Failed to load products.</p>`;
+      applyTranslations(productList);
+    }
+  };
+
+  const openCreateModal = () => {
+    setMode("create");
+    openModal(modalId);            // ใช้ฟังก์ชันกลาง
+    nameInput.addEventListener("input", autoSlugger);
+    // โฟกัสช่องแรก
+    const first = formEl.querySelector("input, textarea, select, button");
+    first && first.focus();
+  };
+
+  const openEditModal = (productId) => {
+    const product = productsCache.find((p) => p.id === Number(productId));
+    if (!product) return;
+
+    setMode("edit", product);
+    openModal(modalId);            // ใช้ฟังก์ชันกลาง
+    // ไม่ autoSlug ในโหมดแก้ไข
+  };
+
+  const closeProductModal = () => {
+    closeModal(modalId);           // ใช้ฟังก์ชันกลาง
+    nameInput.removeEventListener("input", autoSlugger);
+  };
+
+  const previewFiles = () => {
     mediaPreview.innerHTML = "";
     const files = Array.from(mediaInput.files || []);
-    files.forEach((file) => {
+    for (const file of files) {
       const url = URL.createObjectURL(file);
       const wrap = document.createElement("div");
       wrap.className = "preview-item";
@@ -181,56 +233,111 @@ export function init(container) {
         wrap.appendChild(span);
       }
       mediaPreview.appendChild(wrap);
-    });
+    }
+  };
+
+  /* -------------------- Init -------------------- */
+  (async () => {
+    try {
+      isAdmin = await checkPermission("ADMIN");
+    } catch {
+      isAdmin = false;
+    }
+    // ซ่อนปุ่ม Add ถ้าไม่ใช่แอดมิน
+    if (!isAdmin && productAction) productAction.style.display = "none";
+
+    await loadProducts();
+  })();
+
+  initModal(modalId);
+
+  /* -------------------- Events -------------------- */
+  // เปิดสร้างสินค้า
+  addBtn?.addEventListener("click", () => {
+    if (!isAdmin) {
+      showNotification("Permission denied: ADMIN required.", "error");
+      return;
+    }
+    openCreateModal();
   });
 
-  // Submit → check ADMIN → create product → upload media → reload list
+  // ปิดโมดัล
+  cancelBtn.addEventListener("click", closeProductModal);
+
+  // ปิดด้วย ESC (เสริมจากฟังก์ชันกลาง)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeProductModal();
+  });
+
+  // พรีวิวไฟล์
+  mediaInput.addEventListener("change", previewFiles);
+
+  // คลิกปุ่ม Edit ในการ์ด
+  productList.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action='edit']");
+    if (!btn) return;
+    if (!isAdmin) {
+      showNotification("Permission denied: ADMIN required.", "error");
+      return;
+    }
+    const id = btn.getAttribute("data-id");
+    openEditModal(id);
+  });
+
+  // Submit → create หรือ edit ตามโหมด → อัปโหลดสื่อ (option) → reload
   formEl.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    if (!isAdmin) {
+      showNotification("Permission denied: ADMIN required.", "error");
+      return;
+    }
+
+    const mode = modeInput.value;
+    const id   = idInput.value ? Number(idInput.value) : null;
+
+    const slug = slugInput.value.trim();
+    const name = nameInput.value.trim();
+    const description = descInput.value.trim();
+    const price = priceInput.value;
+
+    if (!name || !price || (!slug && mode === "create")) {
+      showNotification("Please fill in required fields.", "warning");
+      return;
+    }
+
     try {
-      const isAdmin = await checkPermission("ADMIN");
-      if (!isAdmin) {
-        alert("Permission denied: ADMIN required.");
-        return;
+      let productId;
+
+      if (mode === "create") {
+        const product = await createProduct({ slug, name, description, price });
+        productId = product.id;
+      } else {
+        await updateProduct(id, { name, description, price });
+        productId = id;
       }
 
-      const slug = formEl.slug.value.trim();
-      const name = formEl.name.value.trim();
-      const description = formEl.description.value.trim();
-      const price = formEl.price.value;
-
-      if (!slug || !name || !price) {
-        alert("Please fill in required fields.");
-        return;
-      }
-
-      // 1) สร้างสินค้า
-      const product = await createProduct({ slug, name, description, price });
-
-      // 2) อัปโหลดไฟล์ (ถ้ามี)
+      // อัปโหลดไฟล์ (ถ้ามี)
       const files = Array.from(mediaInput.files || []);
       if (files.length) {
         try {
-          await uploadProductMedia(product.id, files);
+          await uploadProductMedia(productId, files);
         } catch (upErr) {
           console.warn("Upload media failed:", upErr);
-          // ไม่ fail ทั้ง flow — แจ้งเตือนเฉยๆ
-          alert("Product created, but some media failed to upload.");
+          showNotification("Product saved, but some media failed to upload.", "warning");
         }
       }
 
-      // 3) ปิดโมดัล + รีโหลดสินค้า
-      closeModal();
+      closeProductModal();
       await loadProducts();
-      alert("Product created successfully.");
+      showNotification(mode === "create" ? "Product created successfully." : "Product updated successfully.", "success");
     } catch (err) {
-      console.error("Create product failed:", err);
-      const msg = err?.response?.data?.error || err?.message || "Create product failed";
-      alert(msg);
+      console.error("Save product failed:", err);
+      const msg = err?.response?.data?.error || err?.message || "Save product failed";
+      showNotification(msg, "error");
     }
   });
 
-  // Apply translation to static section + modal
+  // แปลข้อความในหน้า + โมดัล
   applyTranslations(container);
 }

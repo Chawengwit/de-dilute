@@ -125,7 +125,7 @@ INSERT INTO product_media(product_id, url, type, sort_order) VALUES
   (3, '/media/cola1.jpg', 'image', 1),
   (3, '/media/cola_ad.mp4', 'video', 2),
   (5, '/media/grape1.jpg', 'image', 1),
-  (7, '/media/rootbeer.mp4', 'video', 1),
+  (7, '/media/rootbeer.jpg', 'image', 1),
   (8, '/media/strawberry1.jpg', 'image', 1)
 ON CONFLICT DO NOTHING;
 
