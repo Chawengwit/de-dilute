@@ -1,3 +1,4 @@
+// @frontend/js/api.js
 import axios from "./vendor/axios.esm.js";
 
 // -------------------- Axios Instance --------------------
@@ -60,11 +61,17 @@ async function fetchWithLocalCache(key, fetchFn, ttl = 300000) { // default 5 �
   }
 }
 
-// -------------------- Products (Public) --------------------
+function invalidateLocalCache(prefixes = []) {
+  Object.keys(localStorage)
+    .filter((k) => prefixes.some((p) => k.startsWith(p)))
+    .forEach((k) => localStorage.removeItem(k));
+}
+
+// -------------------- Products (Public READ) --------------------
 export async function getProducts(limit = 10, offset = 0) {
   return fetchWithLocalCache(`products:${limit}:${offset}`, async () => {
     const res = await api.get("/products/public", { params: { limit, offset } });
-    return res.data;
+    return res.data; // backend ส่ง array rows
   });
 }
 
@@ -90,9 +97,7 @@ export async function saveSettings(settings) {
     const res = await api.post("/settings", payload);
 
     // invalidate local cache
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith("settings:"))
-      .forEach((key) => localStorage.removeItem(key));
+    invalidateLocalCache(["settings:"]);
 
     return res.data;
   } catch (err) {
@@ -135,12 +140,13 @@ export async function logout() {
 // -------------------- Protected API --------------------
 export async function getCurrentUser() {
   const res = await api.get("/auth/me");
-  return res.data.user;
+  return res.data?.user ?? null;
 }
 
 export async function checkPermission(permission) {
+  // NOTE: ฝั่ง backend ของคุณควรมี /auth/permissions (POST) รองรับ
   const res = await api.post("/auth/permissions", { permission });
-  return !!res.data.hasPermission;
+  return !!res.data?.hasPermission;
 }
 
 /** Helper: assert ADMIN permission (throw if not allowed) */
@@ -149,10 +155,12 @@ async function assertAdmin() {
   if (!ok) throw new Error("Permission denied (ADMIN required)");
 }
 
+// -------------------- Products (ADMIN: CREATE / UPDATE / DELETE) --------------------
+
 /**
  * Create Product (ADMIN only)
+ * Backend: POST /api/products/add
  * @param {Object} payload { slug, name, description, price, is_active=true }
- * @returns {Promise<Object>} created product
  */
 export async function createProduct(payload) {
   await assertAdmin();
@@ -168,9 +176,50 @@ export async function createProduct(payload) {
   const res = await api.post("/products/add", body);
 
   // invalidate product list cache keys
-  Object.keys(localStorage)
-    .filter((k) => k.startsWith("products:"))
-    .forEach((k) => localStorage.removeItem(k));
+  invalidateLocalCache(["products:"]);
+
+  return res.data;
+}
+
+/**
+ * Update Product (ADMIN only)
+ * Backend: PUT /api/products/update/:id
+ * @param {number|string} productId
+ * @param {Object} payload { name?, description?, price?, is_active? }
+ */
+export async function updateProduct(productId, payload = {}) {
+  await assertAdmin();
+
+  // กรอง field ที่เป็น undefined ออก (กันส่งค่าไม่ตั้งใจ)
+  const body = {};
+  ["name", "description", "price", "is_active"].forEach((k) => {
+    if (payload[k] !== undefined) body[k] = k === "price" ? Number(payload[k]) : payload[k];
+  });
+
+  if (Object.keys(body).length === 0) {
+    throw new Error("No fields to update");
+  }
+
+  const res = await api.put(`/products/update/${productId}`, body);
+
+  // invalidate product list cache keys
+  invalidateLocalCache(["products:"]);
+
+  return res.data;
+}
+
+/**
+ * Delete Product (ADMIN only)
+ * Backend: DELETE /api/products/delete/:id
+ * @param {number|string} productId
+ */
+export async function deleteProduct(productId) {
+  await assertAdmin();
+
+  const res = await api.delete(`/products/delete/${productId}`);
+
+  // invalidate product list cache keys
+  invalidateLocalCache(["products:"]);
 
   return res.data;
 }

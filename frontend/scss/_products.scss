@@ -1,5 +1,9 @@
 @use "variables" as v;
 
+.product-action{
+  margin: var(--spacing-lg) 0;
+}
+
 /* ===============================
    Product Grid
    =============================== */
@@ -155,6 +159,12 @@
         transform: translateY(0);
       }
     }
+  }
+
+  .product-actions{
+    position: absolute;
+    right: var(--spacing-md);
+    top: var(--spacing-md);
   }
 }
 

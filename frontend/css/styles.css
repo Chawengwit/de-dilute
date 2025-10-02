@@ -657,6 +657,10 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
     margin-left: auto;
   }
 }
+.product-action {
+  margin: var(--spacing-lg) 0;
+}
+
 /* ===============================
    Product Grid
    =============================== */
@@ -793,6 +797,11 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 }
 .product-card .product-content .btn-add:active {
   transform: translateY(0);
+}
+.product-card .product-actions {
+  position: absolute;
+  right: var(--spacing-md);
+  top: var(--spacing-md);
 }
 
 /* ===============================
