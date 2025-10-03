@@ -1,34 +1,81 @@
-# Node.js
+# -----------------------------
+# OS junk
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Node
+# -----------------------------
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-package-lock.json
+.pnpm-debug.log*
 
-# Environment files
-.env
-.env.*
+# Keep lockfiles committed for reproducible installs
+# (do NOT ignore package-lock.json / yarn.lock / pnpm-lock.yaml)
 
-# Logs
-logs
-*.log
-*.out
-*.err
-
-# Docker
-.docker
-docker-compose.override.yml
-
-# Build output
+# -----------------------------
+# Builds & caches
+# -----------------------------
 dist/
 build/
 coverage/
+.cache/
+.tmp/
 
-# Frontend cache
+# Frontend build outputs (if any)
+frontend/dist/
+frontend/build/
+frontend/.cache/
+
+# Backend build outputs (if any)
+backend/dist/
+backend/build/
+
+# Sourcemaps (optional)
 frontend/css/*.map
 frontend/scss/*.map
 
-# OS
-.DS_Store
-Thumbs.db
+# -----------------------------
+# Env & secrets
+# -----------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# -----------------------------
+# Logs
+# -----------------------------
+logs/
+*.log
+*.out
+*.err
+backend/logs/
+frontend/logs/
+
+# -----------------------------
+# Local uploads (even though you now use R2, keep this ignored)
+# -----------------------------
+uploads/
+
+# -----------------------------
+# Docker
+# -----------------------------
+.docker
+docker-compose.override.yml
+
+# Ignore generated nginx config (created from the template at runtime)
+nginx/default.conf
+
+# -----------------------------
+# Editors/IDEs
+# -----------------------------
+.vscode/
+.idea/
+*.swp

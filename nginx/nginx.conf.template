@@ -1,0 +1,72 @@
+server {
+  listen 80;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # ----------------------
+  # Security headers
+  # ----------------------
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-XSS-Protection "1; mode=block" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Cross-Origin-Embedder-Policy "require-corp" always;
+  add_header Cross-Origin-Resource-Policy "same-origin" always;
+
+  # ----------------------
+  # Content Security Policy
+  # อนุญาตโหลดรูป/วิดีโอจาก PUBLIC_MEDIA_BASE_URL (+ data:, blob:)
+  # ถ้าไม่มีการตั้งค่า PUBLIC_MEDIA_BASE_URL ก็ยังใช้งานได้ (เหลือ 'self' + data:, blob:)
+  # หมายเหตุ: ถ้าคุณใช้หลายโดเมน CDN ให้เพิ่มตัวแปรใหม่แล้วต่อท้ายที่ img-src/media-src
+  add_header Content-Security-Policy
+    "default-src 'self' data: blob:;
+     script-src 'self';
+     style-src 'self';
+     img-src 'self' data: blob: ${PUBLIC_MEDIA_BASE_URL};
+     media-src 'self' data: blob: ${PUBLIC_MEDIA_BASE_URL};
+     font-src 'self' data:;
+     connect-src 'self';
+    " always;
+
+  # ----------------------
+  # HSTS (เปิดเฉพาะ production ที่เสิร์ฟผ่าน HTTPS จริง ๆ)
+  # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+  # ----------------------
+  # Gzip compression
+  # ----------------------
+  gzip on;
+  gzip_types text/plain text/css application/json application/javascript application/xml image/svg+xml;
+  gzip_min_length 256;
+
+  # ----------------------
+  # Cache control (ปิด cache assets ท้องถิ่น — ปรับได้ตามต้องการ)
+  # ----------------------
+  location ~* \.(?:ico|css|js|gif|jpe?g|png|woff2?|eot|ttf|svg|map)$ {
+    expires 0;
+    access_log off;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+  }
+
+  # ----------------------
+  # Serve frontend SPA
+  # ----------------------
+  location / {
+    try_files $uri /index.html;
+  }
+
+  # ----------------------
+  # Proxy API calls → backend
+  # ----------------------
+  location /api/ {
+    proxy_pass http://backend:3000/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+  }
+}
