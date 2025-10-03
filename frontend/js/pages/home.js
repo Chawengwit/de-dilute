@@ -1,3 +1,4 @@
+// @frontend/js/pages/home.js
 import {
   getProducts,
   createProduct,
@@ -15,6 +16,37 @@ import {
   attachMediaFallback,
   DEFAULT_FALLBACK_IMAGE,
 } from "../utils.js";
+
+// -------- NEW: derive key & proxy url helpers --------
+function deriveKeyFromUrl(url) {
+  try {
+    if (!url) return null;
+
+    // 1) ถ้า backend ส่ง s3_key มา ให้ใช้ s3_key โดยตรง (จะจัดการใน mediaCoverHTML)
+    //    ฟังก์ชันนี้รองรับเฉพาะกรณีมีแต่ url
+
+    // 2) พยายามตัด prefix domain ออก
+    //    สมมุติ public base เป็น .../products/... เสมอ ให้ดึงตั้งแต่ /products/ เป็นต้นไป
+    const idx = url.indexOf("/products/");
+    if (idx !== -1) {
+      return url.substring(idx + 1); // ตัด "/" แรกออก → products/...
+    }
+
+    // 3) fallback: ลองตัด protocol/host ตรง ๆ
+    const u = new URL(url);
+    // ตัด leading "/" ออก
+    return u.pathname.replace(/^\/+/, "");
+  } catch {
+    return null;
+  }
+}
+
+function toProxyUrl(mediaItem) {
+  if (!mediaItem) return null;
+  // ถ้ามี s3_key จาก backend ใช้ตรง ๆ
+  const key = mediaItem.s3_key || deriveKeyFromUrl(mediaItem.url);
+  return key ? `/api/media/file/${key}` : (mediaItem.url || null);
+}
 
 export function init(container) {
   /* -------------------- Markup -------------------- */
@@ -40,7 +72,8 @@ export function init(container) {
 
         <div class="form-group">
           <label for="prod-slug">Slug</label>
-          <input id="prod-slug" name="slug" type="text" required pattern="[a-z0-9-]+" placeholder="dedilute-lemon-soda" />
+          <!-- FIX: ใช้ regex เต็ม + escape ขีดกลาง -->
+          <input id="prod-slug" name="slug" type="text" required pattern="^[a-z0-9\\-]+$" placeholder="dedilute-lemon-soda" />
           <small class="help-text">lowercase, ใช้ a–z, 0–9 และ -</small>
         </div>
 
@@ -141,16 +174,18 @@ export function init(container) {
     applyTranslations(formEl);
   };
 
-  // Media cover ที่ปลอดภัย (รองรับทั้งรูป/วิดีโอ + fallback)
+  // Media cover (ผ่าน proxy) + fallback
   const mediaCoverHTML = (item, altText) => {
-    const url = item?.url || "";
     const type = item?.type || "image";
     const fb = DEFAULT_FALLBACK_IMAGE;
 
+    // ใช้ proxy URL เป็นหลัก
+    const proxyUrl = toProxyUrl(item) || fb;
+
     if (type === "video") {
-      return `<video src="${url}" controls preload="metadata" data-fallback="${fb}" aria-label="${altText}"></video>`;
+      return `<video src="${proxyUrl}" controls preload="metadata" data-fallback="${fb}" aria-label="${altText}"></video>`;
     }
-    return `<img src="${url || fb}" alt="${altText}" loading="lazy" data-fallback="${fb}" />`;
+    return `<img src="${proxyUrl}" alt="${altText}" loading="lazy" data-fallback="${fb}" />`;
   };
 
   const productCardHTML = (p) => {
@@ -180,7 +215,6 @@ export function init(container) {
       return;
     }
     productList.innerHTML = products.map(productCardHTML).join("");
-    // bind fallback ให้รูป/วิดีโอทั้งหมดใน list
     attachMediaFallback(productList);
   };
 
