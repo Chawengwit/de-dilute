@@ -8,7 +8,7 @@ import {
   idSchema,
 } from "../schemas/schemas.js";
 import { cache, invalidateCache } from "../middleware/cache.js";
-import { authenticate, requirePermission } from "../middleware/auth.js"; // ✅ ใช้ Permission-Based
+import { authenticate, requirePermission } from "../middleware/auth.js"; // ✅ Permission-Based
 
 const router = Router();
 
@@ -16,6 +16,10 @@ const router = Router();
  * GET /api/products/public
  * Public landing data (active products + media) with pagination
  * ใช้ cache 300s
+ *
+ * ✅ ปรับมาใช้ตาราง media_assets (generic)
+ *    - ผูกด้วย entity_type='product' AND entity_id=p.id
+ *    - ส่งกลับฟิลด์: id, url, type, sort_order, purpose
  */
 router.get(
   "/public",
@@ -26,28 +30,37 @@ router.get(
       const { limit, offset } = req.query;
 
       const query = `
-        SELECT p.id, p.slug, p.name, p.description, p.price, p.created_at,
-               COALESCE(
-                 json_agg(
-                   json_build_object(
-                     'id', m.id,
-                     'url', m.url,
-                     'type', m.type,
-                     'sort_order', m.sort_order
-                   )
-                   ORDER BY m.sort_order
-                 ) FILTER (WHERE m.id IS NOT NULL),
-                 '[]'
-               ) AS media
+        SELECT
+          p.id,
+          p.slug,
+          p.name,
+          p.description,
+          p.price,
+          p.created_at,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', m.id,
+                'url', m.url,
+                'type', m.type,
+                'sort_order', m.sort_order,
+                'purpose', m.purpose
+              )
+              ORDER BY m.sort_order
+            ) FILTER (WHERE m.id IS NOT NULL),
+            '[]'
+          ) AS media
         FROM products p
-        LEFT JOIN product_media m ON p.id = m.product_id
+        LEFT JOIN media_assets m
+          ON m.entity_type = 'product'
+         AND m.entity_id = p.id
         WHERE p.is_active = true
         GROUP BY p.id
         ORDER BY p.created_at DESC
         LIMIT $1 OFFSET $2;
       `;
-      const result = await pool.query(query, [limit, offset]);
 
+      const result = await pool.query(query, [limit, offset]);
       res.json(result.rows);
     } catch (err) {
       console.error("Error fetching public products:", err);
