@@ -69,9 +69,8 @@ export function openModal(modalId, openerEl = document.activeElement) {
   };
   document.addEventListener("keydown", escHandler);
 
-  const focusHandler = (e) => {
+  const focusHandler = () => {
     if (!modal.contains(document.activeElement)) {
-      // if focus left the modal, bring it back to the first focusable
       const items = _getFocusable(modal);
       if (items.length) items[0].focus();
     }
@@ -103,9 +102,7 @@ export function closeModal(modalId) {
 
   // Restore focus to opener
   if (state?.opener && document.body.contains(state.opener)) {
-    try {
-      state.opener.focus();
-    } catch (_) {}
+    try { state.opener.focus(); } catch (_) {}
   }
 
   _modalState.delete(modalId);
@@ -216,4 +213,51 @@ function _getNotificationIcon(type) {
     info: "info-circle",
   };
   return icons[type] || icons.info;
+}
+
+/**
+ * ==========================
+ * Media Fallback Utilities
+ * ==========================
+ */
+
+/** รูป fallback เริ่มต้น (ปรับ path ได้ตามโปรเจกต์) */
+export const DEFAULT_FALLBACK_IMAGE = "/media/placeholder.png";
+
+/**
+ * ผูก event ให้ <img> และ <video> ที่มี data-fallback
+ * ถ้ารูป/วิดีโอโหลดไม่ได้ → ใช้รูป fallback แทน
+ * @param {ParentNode|HTMLElement|Document} root - โหนดหลักที่จะสแกน
+ * @param {string} [fallbackUrl] - URL fallback (ถ้า element ไม่ได้กำหนด data-fallback)
+ */
+export function attachMediaFallback(root = document, fallbackUrl = DEFAULT_FALLBACK_IMAGE) {
+  if (!root) return;
+
+  // IMG: เปลี่ยน src เป็น fallback เมื่อ error
+  const imgs = root.querySelectorAll("img[data-fallback]");
+  imgs.forEach((img) => {
+    const fb = img.getAttribute("data-fallback") || fallbackUrl;
+    const handler = () => {
+      // ป้องกัน loop
+      if (img.src !== fb) img.src = fb;
+    };
+    img.addEventListener("error", handler, { once: true });
+  });
+
+  // VIDEO: หากเล่นไม่ได้ → แทนที่ด้วย <img> fallback
+  const vids = root.querySelectorAll("video[data-fallback]");
+  vids.forEach((vid) => {
+    const fb = vid.getAttribute("data-fallback") || fallbackUrl;
+    const toFallback = () => {
+      const img = document.createElement("img");
+      img.src = fb;
+      img.alt = vid.getAttribute("aria-label") || vid.getAttribute("title") || "media";
+      img.loading = "lazy";
+      img.setAttribute("data-fallback-applied", "true");
+      vid.replaceWith(img);
+    };
+    vid.addEventListener("error", toFallback, { once: true });
+    vid.addEventListener("stalled", toFallback, { once: true });
+    vid.addEventListener("abort", toFallback, { once: true });
+  });
 }

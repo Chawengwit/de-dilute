@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:  # Redis Service
+  redis:
     image: redis:7-alpine
     container_name: dedilute_redis
     restart: always
@@ -36,7 +36,7 @@ services:
     restart: always
     env_file:
       - .env.development
-    environment:   # เพิ่มค่าให้ backend รู้จัก Redis
+    environment:
       - REDIS_URL=redis://redis:6379
     ports:
       - "${BACKEND_PORT}:3000"
@@ -66,4 +66,4 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:   # volume สำหรับ Redis
+  redis_data:

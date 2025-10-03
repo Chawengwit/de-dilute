@@ -16,24 +16,16 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url || "";
 
-    // Treat 401/403/404 gracefully for specific endpoints
     if ([401, 403, 404].includes(status)) {
-      // Current user probe → guest
       if (url.includes("/auth/me")) {
         return Promise.resolve({ data: { user: null } });
       }
-
-      // Permission check → no permission
       if (url.includes("/auth/permissions")) {
         return Promise.resolve({ data: { hasPermission: false } });
       }
-
-      // Settings (admin-only on backend) → return empty object so UI won't crash
       if (url.includes("/settings")) {
         return Promise.resolve({ data: {} });
       }
-
-      // Fallback for other cases we want to soft-fail
       return Promise.resolve({ data: null });
     }
 
@@ -42,7 +34,7 @@ api.interceptors.response.use(
 );
 
 // -------------------- Local Cache Helper --------------------
-async function fetchWithLocalCache(key, fetchFn, ttl = 300000) { // default 5 นาที
+async function fetchWithLocalCache(key, fetchFn, ttl = 300000) {
   try {
     const cached = localStorage.getItem(key);
     if (cached) {
@@ -51,7 +43,6 @@ async function fetchWithLocalCache(key, fetchFn, ttl = 300000) { // default 5 �
         return data;
       }
     }
-
     const data = await fetchFn();
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
     return data;
@@ -68,10 +59,10 @@ function invalidateLocalCache(prefixes = []) {
 }
 
 // -------------------- Products (Public READ) --------------------
-export async function getProducts(limit = 10, offset = 0) {
+export async function getProducts(limit = 20, offset = 0) {
   return fetchWithLocalCache(`products:${limit}:${offset}`, async () => {
     const res = await api.get("/products/public", { params: { limit, offset } });
-    return res.data; // backend ส่ง array rows
+    return res.data;
   });
 }
 
@@ -95,10 +86,7 @@ export async function saveSettings(settings) {
     };
 
     const res = await api.post("/settings", payload);
-
-    // invalidate local cache
     invalidateLocalCache(["settings:"]);
-
     return res.data;
   } catch (err) {
     console.error("Error saving settings:", err);
@@ -144,24 +132,16 @@ export async function getCurrentUser() {
 }
 
 export async function checkPermission(permission) {
-  // NOTE: ฝั่ง backend ของคุณควรมี /auth/permissions (POST) รองรับ
   const res = await api.post("/auth/permissions", { permission });
   return !!res.data?.hasPermission;
 }
 
-/** Helper: assert ADMIN permission (throw if not allowed) */
 async function assertAdmin() {
   const ok = await checkPermission("ADMIN");
   if (!ok) throw new Error("Permission denied (ADMIN required)");
 }
 
 // -------------------- Products (ADMIN: CREATE / UPDATE / DELETE) --------------------
-
-/**
- * Create Product (ADMIN only)
- * Backend: POST /api/products/add
- * @param {Object} payload { slug, name, description, price, is_active=true }
- */
 export async function createProduct(payload) {
   await assertAdmin();
 
@@ -174,23 +154,13 @@ export async function createProduct(payload) {
   };
 
   const res = await api.post("/products/add", body);
-
-  // invalidate product list cache keys
   invalidateLocalCache(["products:"]);
-
   return res.data;
 }
 
-/**
- * Update Product (ADMIN only)
- * Backend: PUT /api/products/update/:id
- * @param {number|string} productId
- * @param {Object} payload { name?, description?, price?, is_active? }
- */
 export async function updateProduct(productId, payload = {}) {
   await assertAdmin();
 
-  // กรอง field ที่เป็น undefined ออก (กันส่งค่าไม่ตั้งใจ)
   const body = {};
   ["name", "description", "price", "is_active"].forEach((k) => {
     if (payload[k] !== undefined) body[k] = k === "price" ? Number(payload[k]) : payload[k];
@@ -201,39 +171,36 @@ export async function updateProduct(productId, payload = {}) {
   }
 
   const res = await api.put(`/products/update/${productId}`, body);
-
-  // invalidate product list cache keys
   invalidateLocalCache(["products:"]);
-
   return res.data;
 }
 
-/**
- * Delete Product (ADMIN only)
- * Backend: DELETE /api/products/delete/:id
- * @param {number|string} productId
- */
 export async function deleteProduct(productId) {
   await assertAdmin();
-
   const res = await api.delete(`/products/delete/${productId}`);
-
-  // invalidate product list cache keys
   invalidateLocalCache(["products:"]);
-
   return res.data;
 }
 
 /**
- * (Optional) Upload media for a product after create
- * Requires backend /api/media/upload (multipart/form-data)
+ * Generic media upload (ADMIN only)
+ * Backend: POST /api/media/upload (multipart/form-data)
+ * @param {number|string} entityId
+ * @param {File[]} files
+ * @param {{purpose?: 'thumbnail'|'gallery'|'video', replace?: boolean}} opts
  */
-export async function uploadProductMedia(productId, files = []) {
+export async function uploadProductMedia(entityId, files = [], opts = {}) {
   await assertAdmin();
   if (!files.length) return [];
 
+  const purpose = opts.purpose ?? "gallery";
+  const replace = !!opts.replace;
+
   const fd = new FormData();
-  fd.append("product_id", String(productId));
+  fd.append("entity_type", "product");
+  fd.append("entity_id", String(entityId));
+  fd.append("purpose", purpose);
+  if (replace) fd.append("replace", "true");
   files.forEach((f) => fd.append("files", f));
 
   const res = await api.post("/media/upload", fd, {
@@ -259,5 +226,4 @@ function cleanupLocalCache(ttl = 300000) {
   });
 }
 
-// schedule cleanup ทุก 1 นาที
 setInterval(() => cleanupLocalCache(300000), 60 * 1000);
