@@ -9,22 +9,21 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import pool from "./db.js";
-import redisClient from "./config/redis.js";
+import redisClient from "./config/redis.js"; // อาจเป็น null ได้ (ถ้าไม่มี REDIS_URL)
 
-// Import API routes
+// Routes
 import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
 import mediaRoutes from "./routes/media.js";
 import settingsRoutes from "./routes/settings.js";
 
-// Import security middleware
+// Security middleware
 import {
   apiLimiter,
   loginLimiter,
   registerLimiter,
 } from "./middleware/security.js";
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
@@ -41,46 +40,70 @@ const __dirname = path.dirname(__filename);
 app.set("trust proxy", 1);
 
 /* -------------------------------------------------- */
-/* Middleware                                         */
+/* CORS                                                */
 /* -------------------------------------------------- */
+const isProd = process.env.NODE_ENV === "production";
 
-// CORS
-const corsOptions =
-  process.env.NODE_ENV === "production"
-    ? {
-        origin: process.env.FRONTEND_URL,
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-      }
-    : {
-        origin: "http://localhost:8080",
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-      };
+// รองรับหลายโดเมนผ่าน ALLOWED_ORIGINS (คั่นด้วย ,)
+// ถ้าไม่ระบุ ให้ใช้ FRONTEND_URL เดียว
+const allowedOriginsEnv =
+  process.env.ALLOWED_ORIGINS ||
+  (process.env.FRONTEND_URL ? String(process.env.FRONTEND_URL) : "");
+
+const allowedOrigins = allowedOriginsEnv
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const corsOptions = isProd
+  ? {
+      origin: (origin, cb) => {
+        // อนุญาต no-origin (เช่น curl/health) หรือ origin ที่อยู่ใน allowlist
+        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+          return cb(null, true);
+        }
+        return cb(new Error("CORS blocked by policy"), false);
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    }
+  : {
+      origin: "http://localhost:8080",
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    };
 
 app.use(cors(corsOptions));
 
-// Body parsers & cookies
+/* -------------------------------------------------- */
+/* Body & Cookies                                      */
+/* -------------------------------------------------- */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
-// Security & performance
+/* -------------------------------------------------- */
+/* Security & Performance                              */
+/* -------------------------------------------------- */
 app.use(
   helmet({
-    // เปิดใช้งานถ้าต้องเสิร์ฟไฟล์ให้ frontend ต่างโดเมน หรือโหลดรูป/วิดีโอจาก CDN
+    // ถ้าโหลดสื่อจาก CDN/โดเมนอื่น ต้อง cross-origin
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    // ถ้าคุณใช้ COEP/COOP ที่อื่น ไม่เปิดในนี้ก็ได้
+    // crossOriginEmbedderPolicy: false,
   })
 );
 app.use(compression());
 
-// Logging
+/* -------------------------------------------------- */
+/* Logging                                             */
+/* -------------------------------------------------- */
 app.use(morgan(process.env.NODE_ENV === "development" ? "dev" : "combined"));
 
 /* -------------------------------------------------- */
-/* Static: Font Awesome (local via node_modules)      */
+/* Static: Font Awesome                                */
 /* -------------------------------------------------- */
 const faBase = path.join(
   __dirname,
@@ -106,9 +129,8 @@ app.use(
 );
 
 /* -------------------------------------------------- */
-/* Static (optional): Local uploaded media             */
-/* หมายเหตุ: ในโปรดักชันคุณใช้ R2/S3 (PUBLIC_MEDIA_BASE_URL) แล้ว
-   บล็อกนี้มีไว้เผื่อกรณี dev ที่ยังอัปไฟล์โลคัล (ไม่กระทบ R2) */
+/* Static (dev-local uploads)                          */
+/* โปรดักชันใช้ R2/CDN ผ่าน PUBLIC_MEDIA_BASE_URL/Proxy */
 /* -------------------------------------------------- */
 const uploadsDir = path.resolve("uploads");
 app.use(
@@ -124,16 +146,14 @@ app.use(
 );
 
 /* -------------------------------------------------- */
-/* Security: Rate Limiting                            */
+/* Security: Rate Limiting                             */
 /* -------------------------------------------------- */
 app.use("/api/", apiLimiter);
-
-// เจาะจงเพิ่ม limiter ให้ login/register ก่อน mount authRoutes
 app.use("/api/auth/login", loginLimiter);
 app.use("/api/auth/register", registerLimiter);
 
 /* -------------------------------------------------- */
-/* Routes                                             */
+/* Routes                                              */
 /* -------------------------------------------------- */
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
@@ -144,7 +164,7 @@ app.use("/api/settings", settingsRoutes);
 app.get("/api/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");
-    const redisStatus = redisClient.isOpen ? "connected" : "disconnected";
+    const redisStatus = redisClient?.isOpen ? "connected" : "disabled";
 
     res.status(200).json({
       status: "OK",
@@ -160,7 +180,7 @@ app.get("/api/health", async (_req, res) => {
       env: process.env.NODE_ENV,
       uptime: process.uptime(),
       db: "disconnected",
-      redis: redisClient.isOpen ? "connected" : "disconnected",
+      redis: redisClient?.isOpen ? "connected" : "disabled",
       error: err.message,
       timestamp: new Date().toISOString(),
     });
@@ -168,17 +188,14 @@ app.get("/api/health", async (_req, res) => {
 });
 
 /* -------------------------------------------------- */
-/* Error Handling                                     */
+/* Error Handling                                      */
 /* -------------------------------------------------- */
-// Favicon request handler
 app.get("/favicon.ico", (_req, res) => res.status(204).end());
 
-// Catch-all for undefined API routes
 app.use((req, res) => {
   res.status(404).json({ error: "API endpoint not found" });
 });
 
-// Global error handler
 app.use((err, _req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ error: "Internal Server Error" });
