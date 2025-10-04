@@ -1,3 +1,9 @@
+# ---- define upgrade/close for websocket (used in proxy headers) ----
+map $http_upgrade $upgrade_connection {
+  default upgrade;
+  ''      close;
+}
+
 server {
   listen 80;
   server_tokens off;
@@ -15,20 +21,14 @@ server {
   add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
 
   # COOP/COEP/CORP
-  # ใช้ COOP เพื่อแยก browsing context
   add_header Cross-Origin-Opener-Policy "same-origin" always;
-
-  # ต้องแน่ใจว่าทรัพยากร cross-origin (ถ้ามี) ส่ง CORP/CORS ด้วย
-  # ถ้า media ทั้งหมดวิ่งผ่าน proxy (/api/...) จะเป็น same-origin และผ่านได้
   add_header Cross-Origin-Embedder-Policy "require-corp" always;
-
-  # สำหรับไฟล์ที่เสิร์ฟจากที่นี่เองให้ถือว่าใช้ได้ cross-origin ด้วย (ปลอดภัยสำหรับ asset public)
   add_header Cross-Origin-Resource-Policy "cross-origin" always;
 
   # ----------------------
   # Content Security Policy
-  # - img/media-src รวม ${PUBLIC_MEDIA_BASE_URL} เผื่อกรณีที่คุณยังมีไฟล์เปิดตรงจาก CDN (แต่แนะนำ proxy ผ่าน /api/)
-  # - ถ้า Frontend มี inline style ให้เติม 'unsafe-inline' ที่ style-src (ตัดออกไว้เพื่อความเข้มงวด)
+  # - ถ้าคุณยังโหลดสื่อจาก CDN/R2 ตรง ให้ตั้ง PUBLIC_MEDIA_BASE_URL เป็นโดเมนนั้น
+  # - ถ้าทุกอย่างวิ่งผ่าน /api/ ก็พอด้วย 'self'
   # ----------------------
   add_header Content-Security-Policy
     "default-src 'self' data: blob:;
@@ -65,36 +65,34 @@ server {
     proxy_pass ${API_BASE}/api/;
 
     proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
-    # WebSocket upgrade
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection $connection_upgrade;
+    # WebSocket
+    proxy_set_header Upgrade    $http_upgrade;
+    proxy_set_header Connection $upgrade_connection;
 
     proxy_connect_timeout 15s;
-    proxy_send_timeout 60s;
-    proxy_read_timeout 60s;
+    proxy_send_timeout    60s;
+    proxy_read_timeout    60s;
 
     # ป้องกัน cache ผิดพลาดระหว่าง debug
     add_header Cache-Control "no-store";
   }
 
   # ----------------------
-  # Long-lived static assets (fingerprinted หรือ file ชื่อคงที่)
+  # Long-lived static assets (fingerprinted หรือไฟล์คงที่)
   # ----------------------
   location ~* \.(?:ico|gif|jpe?g|png|webp|svg|css|js|woff2?|eot|ttf|map)$ {
     access_log off;
-
-    # ถ้ามีไฟล์เวอร์ชัน/แฮช แนะนำ cache ยาว + immutable
     expires 30d;
     add_header Cache-Control "public, max-age=2592000, immutable";
     try_files $uri =404;
   }
 
   # ----------------------
-  # index.html: no-cache เพื่ออัปเดต SPA ได้ไว
+  # index.html: no-store เพื่ออัปเดต SPA ได้ไว
   # ----------------------
   location = /index.html {
     add_header Cache-Control "no-store";
