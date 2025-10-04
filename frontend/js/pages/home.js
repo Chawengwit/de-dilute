@@ -1,3 +1,4 @@
+// @frontend/js/pages/home.js
 import {
   getProducts,
   createProduct,
@@ -15,6 +16,37 @@ import {
   attachMediaFallback,
   DEFAULT_FALLBACK_IMAGE,
 } from "../utils.js";
+
+// -------- NEW: derive key & proxy url helpers --------
+function deriveKeyFromUrl(url) {
+  try {
+    if (!url) return null;
+
+    // 1) ถ้า backend ส่ง s3_key มา ให้ใช้ s3_key โดยตรง (จะจัดการใน mediaCoverHTML)
+    //    ฟังก์ชันนี้รองรับเฉพาะกรณีมีแต่ url
+
+    // 2) พยายามตัด prefix domain ออก
+    //    สมมุติ public base เป็น .../products/... เสมอ ให้ดึงตั้งแต่ /products/ เป็นต้นไป
+    const idx = url.indexOf("/products/");
+    if (idx !== -1) {
+      return url.substring(idx + 1); // ตัด "/" แรกออก → products/...
+    }
+
+    // 3) fallback: ลองตัด protocol/host ตรง ๆ
+    const u = new URL(url);
+    // ตัด leading "/" ออก
+    return u.pathname.replace(/^\/+/, "");
+  } catch {
+    return null;
+  }
+}
+
+function toProxyUrl(mediaItem) {
+  if (!mediaItem) return null;
+  // ถ้ามี s3_key จาก backend ใช้ตรง ๆ
+  const key = mediaItem.s3_key || deriveKeyFromUrl(mediaItem.url);
+  return key ? `/api/media/file/${key}` : (mediaItem.url || null);
+}
 
 export function init(container) {
   /* -------------------- Markup -------------------- */
@@ -40,7 +72,8 @@ export function init(container) {
 
         <div class="form-group">
           <label for="prod-slug">Slug</label>
-          <input id="prod-slug" name="slug" type="text" required pattern="[a-z0-9-]+" placeholder="dedilute-lemon-soda" />
+          <!-- FIX: ใช้ regex เต็ม + escape ขีดกลาง -->
+          <input id="prod-slug" name="slug" type="text" required pattern="^[a-z0-9\\-]+$" placeholder="dedilute-lemon-soda" />
           <small class="help-text">lowercase, ใช้ a–z, 0–9 และ -</small>
         </div>
 
@@ -63,11 +96,10 @@ export function init(container) {
           <label for="prod-media" data-i18n="form.media">Image or Video</label>
           <input id="prod-media" name="media" type="file" accept="image/*,video/*" multiple />
           <div id="media-preview" class="media-preview"></div>
-          <small class="help-text">รองรับหลายไฟล์ • รูป/วิดีโอ</small>
         </div>
 
         <div class="actions">
-          <button type="button" class="liquid-button" id="product-cancel" data-i18n="buttons.cancel">Cancel</button>
+          <button type="button" class="liquid-button cancel" id="product-cancel" data-i18n="buttons.cancel">Cancel</button>
           <button type="submit" class="liquid-button primary" id="product-save" data-i18n="buttons.save">Save</button>
         </div>
       </form>
@@ -99,6 +131,7 @@ export function init(container) {
   /* -------------------- State -------------------- */
   let isAdmin = false;
   let productsCache = [];
+  let currentEditProduct = null;
 
   /* -------------------- Helpers -------------------- */
   const autoSlugger = () => {
@@ -113,9 +146,11 @@ export function init(container) {
   };
 
   const setMode = (mode = "create", product = null) => {
-    modeInput.value = mode;
     formEl.reset();
+    modeInput.value = mode;
     mediaPreview.innerHTML = "";
+    mediaPreview.dataset.state = mode;
+    currentEditProduct = mode === "edit" ? product : null;
 
     if (mode === "create") {
       modalTitle.setAttribute("data-i18n", "products.add_title");
@@ -125,6 +160,7 @@ export function init(container) {
 
       idInput.value = "";
       slugInput.removeAttribute("readonly");
+      mediaInput.value = "";
     } else {
       modalTitle.setAttribute("data-i18n", "products.edit_title");
       modalTitle.textContent = "Edit Product";
@@ -137,20 +173,24 @@ export function init(container) {
       descInput.value  = product.description || "";
       priceInput.value = product.price != null ? Number(product.price) : "";
       slugInput.setAttribute("readonly", "readonly");
+      mediaInput.value = "";
+      renderExistingMediaPreview(product?.media || []);
     }
     applyTranslations(formEl);
   };
 
-  // Media cover ที่ปลอดภัย (รองรับทั้งรูป/วิดีโอ + fallback)
+  // Media cover (ผ่าน proxy) + fallback
   const mediaCoverHTML = (item, altText) => {
-    const url = item?.url || "";
     const type = item?.type || "image";
     const fb = DEFAULT_FALLBACK_IMAGE;
 
+    // ใช้ proxy URL เป็นหลัก
+    const proxyUrl = toProxyUrl(item) || fb;
+
     if (type === "video") {
-      return `<video src="${url}" controls preload="metadata" data-fallback="${fb}" aria-label="${altText}"></video>`;
+      return `<video src="${proxyUrl}" controls preload="metadata" data-fallback="${fb}" aria-label="${altText}"></video>`;
     }
-    return `<img src="${url || fb}" alt="${altText}" loading="lazy" data-fallback="${fb}" />`;
+    return `<img src="${proxyUrl}" alt="${altText}" loading="lazy" data-fallback="${fb}" />`;
   };
 
   const productCardHTML = (p) => {
@@ -180,46 +220,62 @@ export function init(container) {
       return;
     }
     productList.innerHTML = products.map(productCardHTML).join("");
-    // bind fallback ให้รูป/วิดีโอทั้งหมดใน list
     attachMediaFallback(productList);
   };
 
-  const loadProducts = async () => {
-    productList.setAttribute("data-i18n", "home.loading");
-    productList.textContent = "Loading...";
-    try {
-      const rows = await getProducts(10, 0);
-      productsCache = rows || [];
-      renderProducts(productsCache);
-    } catch (err) {
-      console.error("Error loading products:", err);
-      productList.innerHTML = `<p data-i18n="home.error">❌ Failed to load products.</p>`;
-      applyTranslations(productList);
-    }
-  };
+  const renderExistingMediaPreview = (items = []) => {
+    const safeItems = Array.isArray(items) ? items : [];
 
-  const openCreateModal = () => {
-    setMode("create");
-    openModal(modalId);
-    nameInput.addEventListener("input", autoSlugger);
-    formEl.querySelector("input, textarea, select")?.focus();
-  };
-
-  const openEditModal = (productId) => {
-    const product = productsCache.find((p) => p.id === Number(productId));
-    if (!product) return;
-    setMode("edit", product);
-    openModal(modalId);
-  };
-
-  const closeProductModal = () => {
-    closeModal(modalId);
-    nameInput.removeEventListener("input", autoSlugger);
-  };
-
-  const previewFiles = () => {
     mediaPreview.innerHTML = "";
-    const files = Array.from(mediaInput.files || []);
+    mediaPreview.dataset.hasExisting = safeItems.length ? "true" : "false";
+
+    if (!safeItems.length) {
+      const empty = document.createElement("p");
+      empty.className = "media-note";
+      empty.textContent = "No media uploaded for this product yet.";
+      mediaPreview.appendChild(empty);
+      return;
+    }
+
+    // const title = document.createElement("p");
+    // title.className = "media-note";
+    // title.textContent = "Existing media";
+    // mediaPreview.appendChild(title);
+
+    for (const item of safeItems) {
+      if (!item || typeof item !== "object") continue;
+      const wrap = document.createElement("div");
+      wrap.className = "preview-item existing";
+      wrap.dataset.type = item.type || "image";
+      wrap.innerHTML = mediaCoverHTML(item, item.alt || currentEditProduct?.name || "");
+      mediaPreview.appendChild(wrap);
+    }
+
+    // const note = document.createElement("p");
+    // note.className = "media-note";
+    // note.textContent = "Selecting new files will replace the existing media on save.";
+    // mediaPreview.appendChild(note);
+
+    attachMediaFallback(mediaPreview);
+  };
+
+  const renderSelectedMediaPreview = (files = []) => {
+    mediaPreview.innerHTML = "";
+
+    if (!files.length) {
+      if (modeInput.value === "edit" && currentEditProduct) {
+        renderExistingMediaPreview(currentEditProduct.media || []);
+      }
+      return;
+    }
+
+    if (modeInput.value === "edit") {
+      const note = document.createElement("p");
+      note.className = "media-note";
+      note.textContent = "New upload selected – existing media will be replaced.";
+      mediaPreview.appendChild(note);
+    }
+
     for (const file of files) {
       const url = URL.createObjectURL(file);
       const wrap = document.createElement("div");
@@ -244,6 +300,58 @@ export function init(container) {
       }
       mediaPreview.appendChild(wrap);
     }
+  };
+
+  const loadProducts = async () => {
+    productList.setAttribute("data-i18n", "home.loading");
+    productList.textContent = "Loading...";
+    try {
+      const rows = await getProducts(10, 0);
+      productsCache = rows || [];
+      renderProducts(productsCache);
+    } catch (err) {
+      console.error("Error loading products:", err);
+      productList.innerHTML = `<p data-i18n="home.error">❌ Failed to load products.</p>`;
+      applyTranslations(productList);
+    }
+  };
+
+  const openCreateModal = () => {
+    setMode("create");
+    openModal(modalId);
+    nameInput.addEventListener("input", autoSlugger);
+    formEl.querySelector("input, textarea, select")?.focus();
+  };
+
+  const resolveProductById = (value) => {
+    const strId = value != null ? String(value) : "";
+    if (!strId) return null;
+    return (
+      productsCache.find((p) => String(p.id) === strId) ||
+      productsCache.find((p) => Number(p.id) === Number(strId)) ||
+      null
+    );
+  };
+
+  const openEditModal = (productId) => {
+    const product = resolveProductById(productId);
+    if (!product) {
+      console.warn("Product not found for edit", productId);
+      showNotification("Unable to open product for editing.", "error");
+      return;
+    }
+    setMode("edit", product);
+    openModal(modalId);
+  };
+
+  const closeProductModal = () => {
+    closeModal(modalId);
+    nameInput.removeEventListener("input", autoSlugger);
+  };
+
+  const previewFiles = () => {
+    const files = Array.from(mediaInput.files || []);
+    renderSelectedMediaPreview(files);
   };
 
   /* -------------------- Init -------------------- */
@@ -295,7 +403,12 @@ export function init(container) {
     }
 
     const mode = modeInput.value;
-    const id   = idInput.value ? Number(idInput.value) : null;
+    const rawId = idInput.value?.trim();
+    const id = rawId ? Number(rawId) : null;
+    if (rawId && Number.isNaN(id)) {
+      showNotification("Invalid product identifier.", "error");
+      return;
+    }
     const slug = slugInput.value.trim();
     const name = nameInput.value.trim();
     const description = descInput.value.trim();
@@ -320,7 +433,10 @@ export function init(container) {
       if (files.length) {
         try {
           // generic upload: entity_type=product, purpose=gallery
-          await uploadProductMedia(productId, files, { purpose: "gallery" });
+          await uploadProductMedia(productId, files, {
+            purpose: "gallery",
+            replace: mode === "edit",
+          });
         } catch (upErr) {
           console.warn("Upload media failed:", upErr);
           showNotification("Product saved, but some media failed to upload.", "warning");

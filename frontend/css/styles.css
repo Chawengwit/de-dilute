@@ -32,6 +32,7 @@
   --button-border: rgba(255, 255, 255, 0.25);
   --button-border-hover: rgba(255, 255, 255, 0.5);
   --button-text: #ffffff;
+  --button-liquid-text: #0f172a;
   --button-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   /* 📏 Spacing */
   --spacing-xs: 0.25rem;
@@ -93,6 +94,7 @@
   --button-border: rgba(255, 255, 255, 0.2);
   --button-border-hover: rgba(255, 255, 255, 0.4);
   --button-text: #e2e8f0;
+  --button-liquid-text: #0f172a;
   --button-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   /* 🔗 Links (Dark) */
   --color-link: #4dabf7;
@@ -232,7 +234,7 @@ footer p {
 .modal {
   display: none;
   position: fixed;
-  z-index: 1000;
+  z-index: 1200;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -873,7 +875,7 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
   position: relative;
   padding: var(--spacing-sm) var(--spacing-xl);
   font-size: var(--font-size-sm);
-  color: var(--button-text);
+  color: var(--button-liquid-text);
   border: 1px solid var(--button-border);
   border-radius: 50px;
   background: var(--button-bg);
@@ -916,6 +918,7 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 
 /* 🎨 Tone Variants */
 .liquid-button.primary {
+  color: var(--button-text);
   background: var(--color-primary);
   border-color: var(--color-primary);
 }
@@ -977,6 +980,10 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 
 .liquid-button.violet:hover {
   background: color-mix(in srgb, var(--color-violet) 85%, white);
+}
+
+.liquid-button.cancel {
+  color: var(--button-text);
 }
 
 /* 🌊 Animations */

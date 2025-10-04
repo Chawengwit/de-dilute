@@ -1,6 +1,5 @@
 // @backend/src/routes/media.js  (Generic Media API for Thumbnail / Gallery / Video)
 // Cloudflare R2 / S3-compatible
-
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
@@ -11,8 +10,12 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { pipeline } from "stream";
+import { promisify } from "util";
 
+const streamPipeline = promisify(pipeline);
 const router = Router();
 
 /* ---------------------------------------------
@@ -21,13 +24,21 @@ const router = Router();
 const s3 = new S3Client({
   region: process.env.S3_REGION || "auto",
   endpoint: process.env.S3_ENDPOINT,
+  forcePathStyle: true, // good for S3-compatible (R2)
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY,
     secretAccessKey: process.env.S3_SECRET_KEY,
   },
 });
+
 const PUBLIC_BASE = (process.env.PUBLIC_MEDIA_BASE_URL || "").replace(/\/+$/, "");
 const BUCKET = process.env.S3_BUCKET;
+
+// key prefix (e.g. "de-delute") if your objects live under a folder in the bucket
+const KEY_PREFIX = (process.env.S3_KEY_PREFIX || "").replace(/^\/+|\/+$/g, "");
+const withPrefix = (k = "") => (KEY_PREFIX ? `${KEY_PREFIX}/${k.replace(/^\/+/, "")}` : k.replace(/^\/+/, ""));
+const stripPrefix = (k = "") =>
+  KEY_PREFIX && k.startsWith(KEY_PREFIX + "/") ? k.slice(KEY_PREFIX.length + 1) : k;
 
 /* ---------------------------------------------
  * Multer → memoryStorage
@@ -47,42 +58,30 @@ const upload = multer({
  * --------------------------------------------- */
 const PURPOSES = new Set(["thumbnail", "gallery", "video"]);
 
-/** map entity_type -> table & column config (generic media_assets) */
 const ENTITY_MAP = {
   product: {
     table: "media_assets",
-    idColumn: "entity_id",   // media_assets(entity_type, entity_id, ...)
+    idColumn: "entity_id",
     entityType: "product",
   },
-  // ขยายได้ในอนาคต เช่น:
-  // post: { table: "media_assets", idColumn: "entity_id", entityType: "post" },
 };
 
 function makeObjectKey(entityType, entityId, originalName, purpose = "gallery") {
   const ts = Date.now();
   const rand = Math.round(Math.random() * 1e9);
   const ext = (path.extname(originalName || "") || "").toLowerCase();
-  // e.g. products/123/gallery/media-<ts>-<rand>.jpg
+  // products/123/gallery/media-<ts>-<rand>.jpg
   return `${entityType}s/${entityId}/${purpose}/media-${ts}-${rand}${ext}`;
 }
 function detectType(mime) {
   return mime?.startsWith("video/") ? "video" : "image";
 }
 function envReady() {
-  return !!(BUCKET && PUBLIC_BASE && process.env.S3_ENDPOINT);
+  return !!(BUCKET && process.env.S3_ENDPOINT /* PUBLIC_BASE optional for proxy */);
 }
 
 /* -------------------------------------------------------
  * POST /api/media/upload  (ADMIN)
- * multipart/form-data:
- *   - entity_type: "product" | ... (required)
- *   - entity_id:   number (required)
- *   - purpose:     "thumbnail" | "gallery" | "video" (required)
- *   - replace:     "true"/"false" (optional, default=false; ใช้กับ thumbnail)
- *   - files[]:     image/* | video/* (1..10)
- * Behavior:
- *   - thumbnail: ใช้ไฟล์แรกเท่านั้น; ถ้า replace=true → ลบรายการ purpose เดิมก่อน
- *   - gallery/video: แทรกต่อท้าย (sort_order auto-increment)
  * ------------------------------------------------------- */
 router.post(
   "/upload",
@@ -109,13 +108,13 @@ router.post(
       if (!envReady()) {
         return res.status(500).json({
           error:
-            "S3/R2 misconfigured. Please set S3_BUCKET, S3_ENDPOINT, PUBLIC_MEDIA_BASE_URL.",
+            "S3/R2 misconfigured. Please set S3_BUCKET and S3_ENDPOINT. PUBLIC_MEDIA_BASE_URL is optional when using the proxy.",
         });
       }
 
       const { table, idColumn, entityType } = ENTITY_MAP[entity_type];
 
-      // 1) validate entity exists (เฉพาะ product)
+      // validate entity exists (เฉพาะ product)
       if (entity_type === "product") {
         const chk = await client.query("SELECT id FROM products WHERE id = $1", [
           Number(entity_id),
@@ -125,7 +124,7 @@ router.post(
         }
       }
 
-      // 2) ฐาน sort_order ต่อท้าย
+      // next sort_order
       const { rows: maxRows } = await client.query(
         `SELECT COALESCE(MAX(sort_order), -1) AS max_order
            FROM ${table}
@@ -134,45 +133,45 @@ router.post(
       );
       let nextOrder = (maxRows[0]?.max_order ?? -1) + 1;
 
-      // 3) ถ้าเป็น thumbnail + replace=true → ลบของเดิมตาม purpose='thumbnail'
-      if (purpose === "thumbnail" && String(replace).toLowerCase() === "true") {
+      const shouldReplace = String(replace).toLowerCase() === "true";
+
+      if (shouldReplace) {
         const { rows: olds } = await client.query(
           `SELECT id, s3_key, url
              FROM ${table}
-            WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = 'thumbnail'`,
-          [entityType, Number(entity_id)]
+            WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = $3`,
+          [entityType, Number(entity_id), purpose]
         );
 
         if (olds.length) {
-          // ลบ DB
           await client.query(
             `DELETE FROM ${table}
-              WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = 'thumbnail'`,
-            [entityType, Number(entity_id)]
+              WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = $3`,
+            [entityType, Number(entity_id), purpose]
           );
 
-          // ลบ object R2 (best-effort)
           for (const row of olds) {
-            const key = row.s3_key || deriveKeyFromUrl(row.url);
-            if (!key) continue;
+            const storedKey = row.s3_key || deriveKeyFromUrl(row.url);
+            const delKey = withPrefix(stripPrefix(storedKey || ""));
+            if (!delKey) continue;
             try {
-              await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+              await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: delKey }));
             } catch (e) {
-              console.warn("Delete old thumbnail warning:", e?.message || e);
+              console.warn("Delete old media warning:", e?.message || e);
             }
           }
         }
-        // Thumbnail → sort_order = 0
         nextOrder = 0;
       }
 
-      // 4) Upload(s) → R2 และ Insert DB
+      // uploads
       const results = [];
       const filesToUse =
         purpose === "thumbnail" ? [req.files[0]] : Array.from(req.files);
 
       for (const file of filesToUse) {
-        const Key = makeObjectKey(entityType, entity_id, file.originalname, purpose);
+        const rawKey = makeObjectKey(entityType, entity_id, file.originalname, purpose);
+        const Key = withPrefix(rawKey);     // <<<<<< ใช้ prefix ที่นี่
         const ContentType = file.mimetype || "application/octet-stream";
 
         await s3.send(
@@ -181,10 +180,14 @@ router.post(
             Key,
             Body: file.buffer,
             ContentType,
+            Metadata: {
+              "cross-origin-resource-policy": "cross-origin",
+            },
           })
         );
 
-        const publicUrl = `${PUBLIC_BASE}/${Key}`;
+        // PUBLIC_BASE optional; ถ้าไม่ได้ตั้ง เราก็ยังเสิร์ฟผ่าน proxy ได้
+        const publicUrl = PUBLIC_BASE ? `${PUBLIC_BASE}/${Key}` : `/api/media/file/${Key}`;
         const mediaType = detectType(file.mimetype);
 
         const insertSQL = `
@@ -193,14 +196,14 @@ router.post(
           RETURNING id, entity_type, ${idColumn} AS entity_id, purpose, url, type, sort_order
         `;
         const { rows } = await client.query(insertSQL, [
-          entityType,                 // entity_type: 'product'
-          Number(entity_id),          // entity_id
-          purpose,                    // 'thumbnail' | 'gallery' | 'video'
-          publicUrl,                  // url
-          Key,                        // s3_key
-          mediaType,                  // 'image' | 'video'
-          ContentType,                // mime_type
-          nextOrder,                  // sort_order
+          entityType,
+          Number(entity_id),
+          purpose,
+          publicUrl,
+          Key,                 // <<<<<< เก็บ key พร้อม prefix
+          mediaType,
+          ContentType,
+          nextOrder,
         ]);
         results.push(rows[0]);
 
@@ -241,11 +244,11 @@ router.delete(
 
       await client.query(`DELETE FROM media_assets WHERE id = $1`, [Number(id)]);
 
-      // ลบ object บน R2 (best-effort)
-      const key = entity.rows[0].s3_key || deriveKeyFromUrl(entity.rows[0].url);
-      if (key) {
+      const storedKey = entity.rows[0].s3_key || deriveKeyFromUrl(entity.rows[0].url);
+      const delKey = withPrefix(stripPrefix(storedKey || ""));
+      if (delKey) {
         try {
-          await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+          await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: delKey }));
         } catch (e) {
           console.warn("DeleteObject warning:", e?.message || e);
         }
@@ -264,7 +267,6 @@ router.delete(
 
 /* -------------------------------------------------------
  * DELETE /api/media/by-entity  (ADMIN)
- * body: { entity_type, entity_id, purpose? }
  * ------------------------------------------------------- */
 router.delete(
   "/by-entity",
@@ -301,12 +303,12 @@ router.delete(
       const deleteSQL = `DELETE FROM ${table} WHERE ${cond.join(" AND ")}`;
       await client.query(deleteSQL, params);
 
-      // ลบ object ใน R2 (best-effort)
       for (const m of medias) {
-        const key = m.s3_key || deriveKeyFromUrl(m.url);
-        if (!key) continue;
+        const storedKey = m.s3_key || deriveKeyFromUrl(m.url);
+        const delKey = withPrefix(stripPrefix(storedKey || ""));
+        if (!delKey) continue;
         try {
-          await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+          await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: delKey }));
         } catch (e) {
           console.warn("DeleteObject warning:", e?.message || e);
         }
@@ -325,7 +327,6 @@ router.delete(
 
 /* -------------------------------------------------------
  * PATCH /api/media/sort  (ADMIN)
- * body: { items: [{ id, sort_order }, ...] }
  * ------------------------------------------------------- */
 router.patch(
   "/sort",
@@ -359,17 +360,78 @@ router.patch(
   }
 );
 
+/* -------------------------------------------------------
+ * PROXY FETCH (recommended)
+ * GET /api/media/file/<S3_KEY>
+ * (Router นี้ mount ที่ /api/media แล้ว จึงแมตช์ /file/... ภายใน)
+ * - รองรับทั้ง key ที่มี prefix (de-delute/...) และที่ไม่มี
+ * ------------------------------------------------------- */
+router.get(/^\/file\/(.+)$/, async (req, res) => {
+  try {
+    const raw = req.params[0] || "";
+    // key จาก URL อาจมีหรือไม่มี prefix มาก็ได้
+    const requested = decodeURIComponent(raw).replace(/^\/+/, "");
+
+    // ลองแบบที่ “เติม prefix” ก่อน (คือของจริงใน R2)
+    const prefKey = withPrefix(stripPrefix(requested));
+    const tryKeys = Array.from(
+      new Set([
+        prefKey,                  // de-delute/products/...
+        requested,                // products/...  (สำหรับกรณีส่งมาครบแล้ว)
+      ])
+    );
+
+    let found = null;
+    for (const k of tryKeys) {
+      try {
+        const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: k }));
+        found = { key: k, obj };
+        break;
+      } catch (e) {
+        // ลองตัวถัดไป
+      }
+    }
+
+    if (!found) {
+      return res.status(404).send("Not found");
+    }
+
+    const { obj } = found;
+    if (obj.ContentType) res.setHeader("Content-Type", obj.ContentType);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    await streamPipeline(obj.Body, res);
+  } catch (err) {
+    const code = err?.$metadata?.httpStatusCode || 500;
+    if (code === 404 || err?.name === "NoSuchKey") {
+      return res.status(404).send("Not found");
+    }
+    res.status(500).send("Internal server error");
+  }
+});
+
 /* ---------------------------------------------
  * small util: derive s3 key from public URL
  * --------------------------------------------- */
 function deriveKeyFromUrl(url = "") {
   try {
-    const cleanBase = PUBLIC_BASE.replace(/\/+$/, "");
-    if (cleanBase && String(url).startsWith(cleanBase + "/")) {
-      return String(url).substring(cleanBase.length + 1);
-    }
-    return null;
+    if (!url) return null;
+    // รองรับทั้ง absolute/relative
+    const u = new URL(url, "http://placeholder.local");
+    let key = u.pathname.replace(/^\/+/, "");
+    // ถ้า URL เป็น public base ที่มี prefix อยู่แล้วก็ใช้ตามนั้น
+    key = withPrefix(stripPrefix(key));
+    return key;
   } catch {
+    try {
+      const cleanBase = (process.env.PUBLIC_MEDIA_BASE_URL || "").replace(/\/+$/, "");
+      if (cleanBase && String(url).startsWith(cleanBase + "/")) {
+        const k = String(url).substring(cleanBase.length + 1);
+        return withPrefix(stripPrefix(k));
+      }
+    } catch {}
     return null;
   }
 }
