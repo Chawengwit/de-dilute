@@ -21,45 +21,78 @@ router.get(
   validate(paginationSchema, "query"),
   cache("products_public:", 300),
   async (req, res) => {
+    // pagination ปลอดภัย
+    const limit = Math.min(parseInt(req.query.limit || "10", 10), 50);
+    const offset = Math.max(parseInt(req.query.offset || "0", 10), 0);
+
+    // query หลัก (มีสื่อจาก media_assets)
+    const mainQuery = `
+      SELECT
+        p.id,
+        p.slug,
+        p.name,
+        p.description,
+        p.price,
+        p.created_at,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', m.id,
+              'url', m.url,
+              'type', m.type,
+              'sort_order', m.sort_order,
+              'purpose', m.purpose
+            )
+            ORDER BY m.sort_order
+          ) FILTER (WHERE m.id IS NOT NULL),
+          '[]'
+        ) AS media
+      FROM products p
+      LEFT JOIN media_assets m
+        ON m.entity_type = 'product'
+       AND m.entity_id = p.id
+      WHERE p.is_active = true
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2;
+    `;
+
+    // fallback ถ้า media_assets ไม่มี หรือคอลัมน์ไม่ตรง
+    const fallbackQuery = `
+      SELECT
+        p.id,
+        p.slug,
+        p.name,
+        p.description,
+        p.price,
+        p.created_at,
+        '[]'::json AS media
+      FROM products p
+      WHERE p.is_active = true
+      ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2;
+    `;
+
     try {
-      // paginationSchema จะ validate แล้ว แต่กันพลาดอีกชั้น
-      const limit = Math.min(parseInt(req.query.limit || "10", 10), 50);
-      const offset = Math.max(parseInt(req.query.offset || "0", 10), 0);
-
-      const query = `
-        SELECT
-          p.id,
-          p.slug,
-          p.name,
-          p.description,
-          p.price,
-          p.created_at,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', m.id,
-                'url', m.url,
-                'type', m.type,
-                'sort_order', m.sort_order,
-                'purpose', m.purpose
-              )
-              ORDER BY m.sort_order
-            ) FILTER (WHERE m.id IS NOT NULL),
-            '[]'
-          ) AS media
-        FROM products p
-        LEFT JOIN media_assets m
-          ON m.entity_type = 'product'
-         AND m.entity_id = p.id
-        WHERE p.is_active = true
-        GROUP BY p.id
-        ORDER BY p.created_at DESC
-        LIMIT $1 OFFSET $2;
-      `;
-
-      const result = await pool.query(query, [limit, offset]);
+      const result = await pool.query(mainQuery, [limit, offset]);
       return res.json(result.rows);
     } catch (err) {
+      // ถ้าตาราง/คอลัมน์ไม่พร้อม → fallback
+      if (err?.code === "42P01" || err?.code === "42703") {
+        console.warn("media_assets or columns missing. Using fallback products-only.");
+        try {
+          const result = await pool.query(fallbackQuery, [limit, offset]);
+          return res.json(result.rows);
+        } catch (err2) {
+          if (err2?.code === "42P01") {
+            // products ยังไม่มี → ส่งลิสต์ว่าง
+            console.warn("products table missing. Returning empty list.");
+            return res.json([]);
+          }
+          console.error("Fallback products-only query error:", err2);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+      }
       console.error("GET /api/products/public error:", err);
       return res.status(500).json({ error: "Internal server error" });
     }

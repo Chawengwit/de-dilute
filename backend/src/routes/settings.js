@@ -5,40 +5,52 @@ import { cache, invalidateCache } from "../middleware/cache.js";
 
 const router = express.Router();
 
+// ดีฟอลต์แบบเบา ๆ ถ้า DB ยังไม่มีค่า
+const DEFAULT_SETTINGS = {
+  en: { siteName: { value: "De-Delute", type: "text", lang: "en" } },
+  th: { siteName: { value: "De-Delute", type: "text", lang: "th" } },
+};
+
 /**
  * @route GET /api/settings
- * @desc Public - get settings by lang (ใช้ cache)
- * @query lang=th|en
+ * @desc Public - get settings by lang (cache 300s)
  */
 router.get("/", cache("settings:", 300), async (req, res) => {
+  const lang = (req.query.lang || "en").toLowerCase();
   try {
-    const lang = (req.query.lang || "en").toLowerCase();
-
     const result = await db.query(
       "SELECT key, value, type, lang FROM settings WHERE lang = $1 ORDER BY key",
       [lang]
     );
 
+    if (!result.rows.length) {
+      // ไม่มีใน DB → ส่งดีฟอลต์
+      return res.json(DEFAULT_SETTINGS[lang] || DEFAULT_SETTINGS.en);
+    }
+
     const settingsObj = {};
-    result.rows.forEach((row) => {
+    for (const row of result.rows) {
       settingsObj[row.key] = {
         value: row.value,
         type: row.type,
         lang: row.lang,
       };
-    });
-
+    }
     return res.json(settingsObj);
   } catch (err) {
+    // 42P01 = undefined_table, 42703 = undefined_column
+    if (err?.code === "42P01" || err?.code === "42703") {
+      console.warn("Settings table/columns missing. Serving defaults.");
+      return res.json(DEFAULT_SETTINGS[lang] || DEFAULT_SETTINGS.en);
+    }
     console.error("Error fetching settings:", err);
-    return res.status(500).json({ error: "Failed to fetch settings" });
+    return res.status(200).json(DEFAULT_SETTINGS[lang] || DEFAULT_SETTINGS.en);
   }
 });
 
 /**
  * @route POST /api/settings
  * @desc Admin only - upsert settings
- * @body { settings: [{ key, value, type, lang }] }
  */
 router.post(
   "/",
@@ -69,9 +81,7 @@ router.post(
         updated.push(result.rows[0]);
       }
 
-      // ล้าง cache หลังแก้ไข
       await invalidateCache("settings:");
-
       return res.json({ message: "Settings updated successfully", settings: updated });
     } catch (err) {
       console.error("Error saving settings:", err);
