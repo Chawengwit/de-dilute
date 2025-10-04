@@ -737,7 +737,7 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 .product-card .product-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   transform: scale(1);
   transition: transform var(--transition-fast), filter var(--transition-fast);
@@ -956,6 +956,7 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 }
 
 .liquid-button.danger {
+  color: var(--button-text);
   background: var(--color-danger);
   border-color: var(--color-danger);
 }
@@ -983,7 +984,7 @@ nav.navbar .settings-box:hover, nav.navbar .settings-box:focus {
 }
 
 .liquid-button.cancel {
-  color: var(--button-text);
+  color: var(--color-text);
 }
 
 /* 🌊 Animations */
