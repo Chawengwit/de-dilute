@@ -133,20 +133,21 @@ router.post(
       );
       let nextOrder = (maxRows[0]?.max_order ?? -1) + 1;
 
-      // replace old thumbnail
-      if (purpose === "thumbnail" && String(replace).toLowerCase() === "true") {
+      const shouldReplace = String(replace).toLowerCase() === "true";
+
+      if (shouldReplace) {
         const { rows: olds } = await client.query(
           `SELECT id, s3_key, url
              FROM ${table}
-            WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = 'thumbnail'`,
-          [entityType, Number(entity_id)]
+            WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = $3`,
+          [entityType, Number(entity_id), purpose]
         );
 
         if (olds.length) {
           await client.query(
             `DELETE FROM ${table}
-              WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = 'thumbnail'`,
-            [entityType, Number(entity_id)]
+              WHERE entity_type = $1 AND ${idColumn} = $2 AND purpose = $3`,
+            [entityType, Number(entity_id), purpose]
           );
 
           for (const row of olds) {
@@ -156,7 +157,7 @@ router.post(
             try {
               await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: delKey }));
             } catch (e) {
-              console.warn("Delete old thumbnail warning:", e?.message || e);
+              console.warn("Delete old media warning:", e?.message || e);
             }
           }
         }
@@ -392,9 +393,6 @@ router.get(/^\/file\/(.+)$/, async (req, res) => {
     }
 
     if (!found) {
-      if (process.env.DEBUG_MEDIA === "1") {
-        console.error("[media-proxy] NotFound bucket=%s tried=%o", BUCKET, tryKeys);
-      }
       return res.status(404).send("Not found");
     }
 
@@ -407,9 +405,6 @@ router.get(/^\/file\/(.+)$/, async (req, res) => {
     await streamPipeline(obj.Body, res);
   } catch (err) {
     const code = err?.$metadata?.httpStatusCode || 500;
-    if (process.env.DEBUG_MEDIA === "1") {
-      console.error("[media-proxy] GetObject error:", code, err?.name, err?.message);
-    }
     if (code === 404 || err?.name === "NoSuchKey") {
       return res.status(404).send("Not found");
     }
