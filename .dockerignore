@@ -1,27 +1,34 @@
-# Node modules & logs
-node_modules
-npm-debug.log
-yarn-error.log
-pnpm-debug.log
-*.log
-
-# Git & VCS
+# VCS
 .git
 .gitignore
 
-# Environment files (ใช้ docker-compose แทน)
-.env
-.env.*
-
-# OS files
+# Logs / junk
+*.log
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
 .DS_Store
 Thumbs.db
 
-# Build outputs
+# Envs (ใช้ ENV ของ Render แทน)
+.env
+.env.*
+!.env.example
+
+# Node deps (ทุกรายการย่อย)
+node_modules
+**/node_modules
+
+# Build outputs (ถ้ามี)
 dist
 build
 coverage
 
-# Frontend sources we don’t need in image
-frontend/scss
+# ไม่ต้องส่งของ backend/database เข้า build context ของ Nginx
+backend
+database
+docker-compose.yml
+
+# Frontend source maps/SCSS ที่ไม่จำเป็นบน production
 frontend/**/*.map
+frontend/scss
