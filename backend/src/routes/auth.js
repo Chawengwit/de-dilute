@@ -17,6 +17,16 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_key";
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
 
+/** Helper: read token from Cookie or Authorization header (optional) */
+function readToken(req) {
+  const cookieToken = req.cookies?.auth_token;
+  const auth = req.headers.authorization || "";
+  const headerToken = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : null;
+  return cookieToken || headerToken || null;
+}
+
 /**
  * @route POST /api/auth/register
  * @desc Register a new user (default ไม่มีสิทธิ์ใด ๆ) + create empty permissions row
@@ -29,7 +39,6 @@ router.post("/register", validate(registerSchema), async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Check existing user
     const existingUser = await client.query(
       "SELECT id FROM users WHERE email = $1",
       [email]
@@ -39,10 +48,8 @@ router.post("/register", validate(registerSchema), async (req, res) => {
       return res.status(400).json({ error: "User already exists." });
     }
 
-    // Hash password
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Insert user
     const result = await client.query(
       `INSERT INTO users (email, password_hash, display_name)
        VALUES ($1, $2, $3)
@@ -52,7 +59,7 @@ router.post("/register", validate(registerSchema), async (req, res) => {
 
     const user = result.rows[0];
 
-    // ✅ Create a permissions row with NULL name (manual assign later)
+    // create empty permissions row
     await client.query(
       "INSERT INTO permissions (user_id, name) VALUES ($1, NULL)",
       [user.id]
@@ -60,14 +67,14 @@ router.post("/register", validate(registerSchema), async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "User registered successfully.",
       user,
     });
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Register error:", err);
-    res.status(500).json({ error: "Internal server error." });
+    return res.status(500).json({ error: "Internal server error." });
   } finally {
     client.release();
   }
@@ -97,16 +104,15 @@ router.post("/login", validate(loginSchema), async (req, res) => {
       expiresIn: "7d",
     });
 
-    // Save JWT in HttpOnly Secure Cookie
     res.cookie("auth_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: "/", // ✅ ให้ลบ cookie ได้ง่ายตอน logout
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
     });
 
-    res.json({
+    return res.json({
       message: "Login successful.",
       user: {
         id: user.id,
@@ -116,7 +122,7 @@ router.post("/login", validate(loginSchema), async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Internal server error." });
+    return res.status(500).json({ error: "Internal server error." });
   }
 });
 
@@ -127,21 +133,17 @@ router.post("/login", validate(loginSchema), async (req, res) => {
  */
 router.post("/logout", (req, res) => {
   res.clearCookie("auth_token", { path: "/" });
-  res.json({ message: "Logged out successfully." });
+  return res.json({ message: "Logged out successfully." });
 });
 
 /**
  * @route POST /api/auth/permissions
  * @desc Check if current user has a permission code; body: { permission: "ADMIN" }
- * @access Private
- *
- * ใช้ .env เป็นตัวแมปชื่อจริงของ permission:
- *   ADMIN=ADMIN
- *   หรือ ADMIN=SUPERADMIN เป็นต้น
+ * @access Public (best-effort) → ถ้าไม่มี token จะได้ { hasPermission:false }
  */
-router.post("/permissions", authenticate, async (req, res) => {
+router.post("/permissions", async (req, res) => {
   try {
-    const { permission } = req.body;
+    const { permission } = req.body || {};
     if (!permission) {
       return res.status(400).json({ error: "Permission code is required" });
     }
@@ -151,23 +153,34 @@ router.post("/permissions", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Unknown permission code" });
     }
 
-    const { id } = req.user;
+    // อ่าน token แบบ optional
+    const token = readToken(req);
+    if (!token) {
+      return res.json({ hasPermission: false });
+    }
+
+    let payload = null;
+    try {
+      payload = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.json({ hasPermission: false });
+    }
 
     const result = await pool.query(
       "SELECT 1 FROM permissions WHERE user_id = $1 AND name = $2 LIMIT 1",
-      [id, permName]
+      [payload.id, permName]
     );
 
     return res.json({ hasPermission: result.rows.length > 0 });
   } catch (err) {
     console.error("check-permissions error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
 /**
  * (ทางเลือกเสริม) @route GET /api/auth/permissions/:code
- * สะดวกเวลาอยากเช็คผ่าน query / fetch GET
+ * ต้องล็อกอินเท่านั้น (เวอร์ชัน strict)
  */
 router.get("/permissions/:code", authenticate, async (req, res) => {
   try {
@@ -182,10 +195,10 @@ router.get("/permissions/:code", authenticate, async (req, res) => {
       [req.user.id, permName]
     );
 
-    res.json({ hasPermission: result.rows.length > 0 });
+    return res.json({ hasPermission: result.rows.length > 0 });
   } catch (err) {
     console.error("check-permissions GET error:", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -205,10 +218,10 @@ router.get("/me", authenticate, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ user: result.rows[0] });
+    return res.json({ user: result.rows[0] });
   } catch (err) {
     console.error("Me error:", err);
-    res.status(500).json({ error: "Internal server error." });
+    return res.status(500).json({ error: "Internal server error." });
   }
 });
 
