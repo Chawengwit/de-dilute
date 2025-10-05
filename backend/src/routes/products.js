@@ -8,71 +8,100 @@ import {
   idSchema,
 } from "../schemas/schemas.js";
 import { cache, invalidateCache } from "../middleware/cache.js";
-import { authenticate, requirePermission } from "../middleware/auth.js"; // ✅ Permission-Based
+import { authenticate, requirePermission } from "../middleware/auth.js";
 
 const router = Router();
 
 /**
  * GET /api/products/public
- * Public landing data (active products + media) with pagination
- * ใช้ cache 300s
- *
- * ✅ ปรับมาใช้ตาราง media_assets (generic)
- *    - ผูกด้วย entity_type='product' AND entity_id=p.id
- *    - ส่งกลับฟิลด์: id, url, type, sort_order, purpose
+ * Public landing data with pagination (cached 300s)
  */
 router.get(
   "/public",
   validate(paginationSchema, "query"),
   cache("products_public:", 300),
   async (req, res) => {
+    // pagination ปลอดภัย
+    const limit = Math.min(parseInt(req.query.limit || "10", 10), 50);
+    const offset = Math.max(parseInt(req.query.offset || "0", 10), 0);
+
+    // query หลัก (มีสื่อจาก media_assets)
+    const mainQuery = `
+      SELECT
+        p.id,
+        p.slug,
+        p.name,
+        p.description,
+        p.price,
+        p.created_at,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', m.id,
+              'url', m.url,
+              'type', m.type,
+              'sort_order', m.sort_order,
+              'purpose', m.purpose
+            )
+            ORDER BY m.sort_order
+          ) FILTER (WHERE m.id IS NOT NULL),
+          '[]'
+        ) AS media
+      FROM products p
+      LEFT JOIN media_assets m
+        ON m.entity_type = 'product'
+       AND m.entity_id = p.id
+      WHERE p.is_active = true
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2;
+    `;
+
+    // fallback ถ้า media_assets ไม่มี หรือคอลัมน์ไม่ตรง
+    const fallbackQuery = `
+      SELECT
+        p.id,
+        p.slug,
+        p.name,
+        p.description,
+        p.price,
+        p.created_at,
+        '[]'::json AS media
+      FROM products p
+      WHERE p.is_active = true
+      ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2;
+    `;
+
     try {
-      const { limit, offset } = req.query;
-
-      const query = `
-        SELECT
-          p.id,
-          p.slug,
-          p.name,
-          p.description,
-          p.price,
-          p.created_at,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', m.id,
-                'url', m.url,
-                'type', m.type,
-                'sort_order', m.sort_order,
-                'purpose', m.purpose
-              )
-              ORDER BY m.sort_order
-            ) FILTER (WHERE m.id IS NOT NULL),
-            '[]'
-          ) AS media
-        FROM products p
-        LEFT JOIN media_assets m
-          ON m.entity_type = 'product'
-         AND m.entity_id = p.id
-        WHERE p.is_active = true
-        GROUP BY p.id
-        ORDER BY p.created_at DESC
-        LIMIT $1 OFFSET $2;
-      `;
-
-      const result = await pool.query(query, [limit, offset]);
-      res.json(result.rows);
+      const result = await pool.query(mainQuery, [limit, offset]);
+      return res.json(result.rows);
     } catch (err) {
-      console.error("Error fetching public products:", err);
-      res.status(500).json({ error: "Internal server error" });
+      // ถ้าตาราง/คอลัมน์ไม่พร้อม → fallback
+      if (err?.code === "42P01" || err?.code === "42703") {
+        console.warn("media_assets or columns missing. Using fallback products-only.");
+        try {
+          const result = await pool.query(fallbackQuery, [limit, offset]);
+          return res.json(result.rows);
+        } catch (err2) {
+          if (err2?.code === "42P01") {
+            // products ยังไม่มี → ส่งลิสต์ว่าง
+            console.warn("products table missing. Returning empty list.");
+            return res.json([]);
+          }
+          console.error("Fallback products-only query error:", err2);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+      }
+      console.error("GET /api/products/public error:", err);
+      return res.status(500).json({ error: "Internal server error" });
     }
   }
 );
 
 /**
  * POST /api/products/add
- * Create product (ADMIN permission required)
- * invalidate cache หลัง insert
+ * ADMIN only
  */
 router.post(
   "/add",
@@ -96,24 +125,21 @@ router.post(
         is_active ?? true,
       ]);
 
-      // 🗑️ clear public cache
       await invalidateCache("products_public:");
-
-      res.status(201).json(result.rows[0]);
+      return res.status(201).json(result.rows[0]);
     } catch (err) {
       if (err.code === "23505") {
         return res.status(409).json({ error: "Slug already exists" });
       }
-      console.error("Error adding product:", err);
-      res.status(500).json({ error: "Internal server error" });
+      console.error("POST /api/products/add error:", err);
+      return res.status(500).json({ error: "Internal server error" });
     }
   }
 );
 
 /**
  * PUT /api/products/update/:id
- * Update product by id (ADMIN permission required)
- * invalidate cache หลัง update
+ * ADMIN only
  */
 router.put(
   "/update/:id",
@@ -145,21 +171,18 @@ router.put(
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // 🗑️ clear public cache
       await invalidateCache("products_public:");
-
-      res.json(result.rows[0]);
+      return res.json(result.rows[0]);
     } catch (err) {
-      console.error("Error updating product:", err);
-      res.status(500).json({ error: "Internal server error" });
+      console.error("PUT /api/products/update/:id error:", err);
+      return res.status(500).json({ error: "Internal server error" });
     }
   }
 );
 
 /**
  * DELETE /api/products/delete/:id
- * Delete product by id (ADMIN permission required)
- * invalidate cache หลัง delete
+ * ADMIN only
  */
 router.delete(
   "/delete/:id",
@@ -178,13 +201,11 @@ router.delete(
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // 🗑️ clear public cache
       await invalidateCache("products_public:");
-
-      res.json({ message: "Product deleted", product: result.rows[0] });
+      return res.json({ message: "Product deleted", product: result.rows[0] });
     } catch (err) {
-      console.error("Error deleting product:", err);
-      res.status(500).json({ error: "Internal server error" });
+      console.error("DELETE /api/products/delete/:id error:", err);
+      return res.status(500).json({ error: "Internal server error" });
     }
   }
 );

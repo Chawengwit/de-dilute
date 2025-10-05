@@ -1,5 +1,12 @@
+# ---- define upgrade/close for websocket (used in proxy headers) ----
+map $http_upgrade $upgrade_connection {
+  default upgrade;
+  ''      close;
+}
+
 server {
   listen 80;
+  server_tokens off;
 
   root /usr/share/nginx/html;
   index index.html;
@@ -16,11 +23,13 @@ server {
   # COOP/COEP/CORP
   add_header Cross-Origin-Opener-Policy "same-origin" always;
   add_header Cross-Origin-Embedder-Policy "require-corp" always;
-  add_header Cross-Origin-Resource-Policy "same-origin" always;
+  add_header Cross-Origin-Resource-Policy "cross-origin" always;
 
   # ----------------------
   # Content Security Policy
-  # ใช้ proxy แล้ว 'self' + data: blob: ก็พอ
+  # - ถ้ายังโหลดสื่อจาก CDN/R2 ตรง ให้ตั้ง PUBLIC_MEDIA_BASE_URL เป็นโดเมนนั้น
+  # - ถ้าทุกอย่างวิ่งผ่าน /api/ ก็พอด้วย 'self'
+  # ----------------------
   add_header Content-Security-Policy
     "default-src 'self' data: blob:;
      script-src 'self';
@@ -29,38 +38,73 @@ server {
      media-src 'self' data: blob: ${PUBLIC_MEDIA_BASE_URL};
      font-src 'self' data:;
      connect-src 'self';
+     worker-src 'self' blob:;
     " always;
 
   # ----------------------
   # Gzip compression
   # ----------------------
   gzip on;
-  gzip_types text/plain text/css application/json application/javascript application/xml image/svg+xml;
+  gzip_types text/plain text/css application/json application/javascript application/xml image/svg+xml font/woff2;
   gzip_min_length 256;
 
   # ----------------------
-  # Proxy API calls → backend  (ใช้ ^~ เพื่อชนะ regex ด้านล่าง)
+  # Health (for Render healthcheck)
+  # ----------------------
+  location = /health {
+    add_header Content-Type text/plain;
+    return 200 "OK";
+  }
+
+  # ----------------------
+  # Proxy API calls → backend
+  # - ตั้ง ENV: API_BASE (เช่น https://your-backend.onrender.com)
+  # - ^~ เพื่อชนะ regex สาย static ข้างล่าง
   # ----------------------
   location ^~ /api/ {
-    proxy_pass https://de-dilute-backend.onrender.com/api/;
+    proxy_pass ${API_BASE}/api/;
+
     proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_cache_bypass $http_upgrade;
+
+    # ใช้ host ของ upstream + เปิด SNI (สำคัญสำหรับ Render routing/TLS)
+    proxy_set_header Host              $proxy_host;
+    proxy_ssl_server_name              on;
+
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # WebSocket
+    proxy_set_header Upgrade    $http_upgrade;
+    proxy_set_header Connection $upgrade_connection;
+
+    proxy_connect_timeout 15s;
+    proxy_send_timeout    60s;
+    proxy_read_timeout    60s;
+
+    # ป้องกัน cache ผิดพลาดระหว่าง debug
+    add_header Cache-Control "no-store";
   }
 
   # ----------------------
-  # Static assets (regex) — จะไม่ทับ /api/ เพราะ ^~ ข้างบน
+  # Long-lived static assets (fingerprinted หรือไฟล์คงที่)
   # ----------------------
-  location ~* \.(?:ico|css|js|gif|jpe?g|png|woff2?|eot|ttf|svg|map)$ {
-    expires 0;
+  location ~* \.(?:ico|gif|jpe?g|png|webp|svg|css|js|woff2?|eot|ttf|map)$ {
     access_log off;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+    expires 30d;
+    add_header Cache-Control "public, max-age=2592000, immutable";
+    try_files $uri =404;
   }
 
   # ----------------------
-  # Serve frontend SPA
+  # index.html: no-store เพื่ออัปเดต SPA ได้ไว
+  # ----------------------
+  location = /index.html {
+    add_header Cache-Control "no-store";
+    try_files $uri =404;
+  }
+
+  # ----------------------
+  # Serve frontend SPA (history fallback)
   # ----------------------
   location / {
     try_files $uri /index.html;
