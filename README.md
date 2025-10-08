@@ -8,11 +8,8 @@ A monorepo holds a Dockerized Express backend, PostgreSQL schema migrations, a s
 ## Setup Instructions
 Clone the repository, copy `.env.example` to `.env`, run `docker-compose up --build`, install frontend dependencies with `npm install`, seed the database via `npm run migrate`, and access the landing page on port 8080 with the admin panel proxied at `/admin`.
 
-## Environment Variables
-Configure `PORT`, `DATABASE_URL`, `JWT_SECRET`, `REFRESH_SECRET`, `COOKIE_DOMAIN`, `REDIS_URL`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `CLOUDFLARE_R2_ENDPOINT`, `AXIOS_BASE_URL`, `DEFAULT_LOCALE`, `DEFAULT_THEME`, and `ADMIN_EMAIL` to align services across containers and deployment stages.
-
 ## Backend API Endpoints
-The Express API exposes RESTful routes for `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout`, `/api/products`, `/api/products/:id/media`, `/api/uploads/s3`, `/api/uploads/r2`, `/api/settings/cache`, and `/api/settings/preferences`, with JSON responses, validation middleware, and structured logging.
+The Express API exposes RESTful routes with JSON responses, validation middleware, and structured logging.
 
 ## Database Schema
 PostgreSQL tables include `users` (roles, password hashes, refresh tokens), `products` (localized strings, pricing, flags), `media_assets` (S3 and R2 object metadata), `product_media` (many-to-many), `sessions` (JWT revocation), `settings` (theme, locale), and `cache_entries` (revalidation metadata), all managed through versioned migrations and Prisma/Knex queries.
